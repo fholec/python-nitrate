@@ -338,6 +338,58 @@ def ascii(text):
     if not isinstance(text, unicode): text = unicode(text)
     return unicodedata.normalize('NFKD', text).encode('ascii','ignore')
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#  MultiCall methods
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MULTICALL_ON = 1
+MULTICALL_OFF = 0
+
+_multicall_mode = MULTICALL_OFF
+
+def multicall_get():
+    """ Get current multicall mode """
+    return _multicall_mode
+
+def multicall_set(mode=None):
+    """
+    Set the multicall mode
+
+    If enabled, some objects (currently only from CaseRun class) will use
+    MultiCall for updating its states (thus speeding up the process).
+
+    Possible values are:
+
+    MULTICALL_ON ..... multicall enabled
+    MULTICALL_OFF .... multicall disabled
+    """
+
+    global _multicall_mode
+    global _multicall
+    if mode is None:
+        _multicall_mode = MULTICALL_OFF
+    else:
+        if mode not in [MULTICALL_ON, MULTICALL_OFF]:
+            raise NitrateError("Invalid multicall mode '{0}'".format(mode))
+        else:
+            _multicall_mode = mode
+    if mode == MULTICALL_ON:
+        if get_cache_level() == CACHE_NONE:
+            raise NitrateError("Unable to set multicall mode because caching\
+                    is currently set on CACHE_NONE level")
+        else:
+            _multicall = xmlrpclib.MultiCall(Nitrate()._server)
+            log.info("In order to enable MultiCall feature, CACHE_CHANGES\
+                    level will be used")
+    log.debug("MultiCall mode {0}".format(mode))
+
+def multicall_call():
+    """ Execute multicall query """
+
+    return _multicall()
+
+multicall_set()
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #  Nitrate None Class
@@ -3735,7 +3787,10 @@ class CaseRun(Mutable):
 
         log.info("Updating case run " + self.identifier)
         log.debug(pretty(hash))
-        self._server.TestCaseRun.update(self.id, hash)
+        if multicall_get() == MULTICALL_OFF:
+            self._server.TestCaseRun.update(self.id, hash)
+        else:
+            multicall.TestCaseRun.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
@@ -3746,6 +3801,47 @@ class CaseRun(Mutable):
 
         # Update self (if modified)
         Mutable.update(self)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #  Case Runs Self Test
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    class _test(unittest.TestCase):
+        def setUp(self):
+            """ Set up performance test configuration from the config """
+            self.performance = Nitrate()._config.performance
+
+        def test_performance_update_caseruns(self):
+            """
+                Updating multiple CaseRuns from a TestRun
+
+                Test for fetching caserun states from DB and updating them
+                focusing on the updating part
+            """
+            start_time = time.time()
+            for caserun in TestRun(self.performance.testplan).caseruns:
+                log.debug("{0} {1}".format(caserun.id, caserun.status))
+                caserun.status = Status(Status._statuses[random.randint(1,8)])
+                caserun.update()
+            _print_time(time.time() - start_time)
+
+        def test_performance_update_caseruns(self):
+            """
+                Updating multiple CaseRuns from a TestRun with MultiCall
+
+                Test for fetching caserun states from DB and updating them
+                focusing on the updating part with MultiCall
+            """
+            multicall_set(MULTICALL_ON)
+            start_time = time.time()
+            for caserun in TestRun(self.performance.testplan).caseruns:
+                log.debug("{0} {1}".format(caserun.id, caserun.status))
+                caserun.status = Status(Status._statuses[random.randint(1,8)])
+                caserun.update()
+            if multicall_get() == 1:
+                multicall_call()
+            _print_time(time.time() - start_time)
+            multicall_set(MULTICALL_OFF)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
