@@ -3790,7 +3790,7 @@ class CaseRun(Mutable):
         if multicall_get() == MULTICALL_OFF:
             self._server.TestCaseRun.update(self.id, hash)
         else:
-            multicall.TestCaseRun.update(self.id, hash)
+            _multicall.TestCaseRun.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
