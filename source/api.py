@@ -3825,7 +3825,7 @@ class CaseRun(Mutable):
                 caserun.update()
             _print_time(time.time() - start_time)
 
-        def test_performance_update_caseruns(self):
+        def test_performance_update_caseruns_multicall(self):
             """
                 Updating multiple CaseRuns from a TestRun with MultiCall
 
