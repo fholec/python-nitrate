@@ -371,22 +371,20 @@ def multicall_set(mode=None):
     else:
         if mode not in [MULTICALL_ON, MULTICALL_OFF]:
             raise NitrateError("Invalid multicall mode '{0}'".format(mode))
-        else:
-            _multicall_mode = mode
+        _multicall_mode = mode
     if mode == MULTICALL_ON:
         if get_cache_level() == CACHE_NONE:
-            raise NitrateError("Unable to set multicall mode because caching\
-                    is currently set on CACHE_NONE level")
-        else:
-            _multicall = xmlrpclib.MultiCall(Nitrate()._server)
-            log.info("In order to enable MultiCall feature, CACHE_CHANGES\
-                    level will be used")
+            raise NitrateError("Unable to set multicall mode because caching"
+                    "is currently set on CACHE_NONE level")
+        _multicall = xmlrpclib.MultiCall(Nitrate()._server)
+        log.info("In order to enable MultiCall feature, CACHE_CHANGES"
+                "level will be used")
     log.debug("MultiCall mode {0}".format(mode))
 
 def multicall_call():
     """ Execute multicall query """
-
-    return _multicall()
+    if multicall_get() == MULTICALL_ON:
+        return _multicall()
 
 multicall_set()
 
@@ -3819,9 +3817,9 @@ class CaseRun(Mutable):
                 focusing on the updating part
             """
             start_time = time.time()
-            for caserun in TestRun(self.performance.testplan).caseruns:
+            for caserun in TestRun(self.performance.testrun).caseruns:
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
-                caserun.status = Status(Status._statuses[random.randint(1,8)])
+                caserun.status = Status(random.randint(1,8))
                 caserun.update()
             _print_time(time.time() - start_time)
 
@@ -3834,11 +3832,10 @@ class CaseRun(Mutable):
             """
             multicall_set(MULTICALL_ON)
             start_time = time.time()
-            for caserun in TestRun(self.performance.testplan).caseruns:
+            for caserun in TestRun(self.performance.testrun).caseruns:
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
-                caserun.status = Status(Status._statuses[random.randint(1,8)])
+                caserun.status = Status(random.randint(1,8))
                 caserun.update()
-            if multicall_get() == 1:
                 multicall_call()
             _print_time(time.time() - start_time)
             multicall_set(MULTICALL_OFF)
