@@ -2420,11 +2420,14 @@ class CaseTags(Container):
         def test_performance_check_tags(self):
             """ Display tags of test cases
 
-                Test prints tags from a test cases present in a test plan
+                Test prints tags from a test cases present in a test plan.
+                The problem in this case is separate fetching of tag names
+                for every test case (one query per case). It can be improved
+                by implementing Tag class with caching.
             """
             start_time = time.time()
             for case in TestPlan(self.performance.testplan):
-                log.debug(case, ": ", case.tags)
+                log.debug("{0}: {1}".format(case, case.tags))
             _print_time(time.time() - start_time)
 
 
@@ -3499,8 +3502,11 @@ class TestCase(Mutable):
             """
                 Search for test cases and display authors
 
-                Test searches a pattern in all test cases and displays the result
-                with their testers
+                Test searches a pattern in all test cases and displays the
+                result with their testers. The slowdown here is fetching users
+                from the database (one by one). One solution is persistent
+                local cache with stored objects (users, ...).
+
             """
             start_time = time.time()
             for testcase in TestCase.search(
@@ -3512,8 +3518,12 @@ class TestCase(Mutable):
             """
                 Show test cases from author and their test plans
 
-                Test displays test cases from specified author and also test plans
-                which contain these test cases
+                Test displays test cases from specified author and also test
+                plans which contain these test cases. The main problem is
+                fething the same test plans multiple times if they contain
+                more than one test case in the set. Solution might be caching
+                test plans (so only one fetch is required) or persistent
+                cache.
             """
             start_time = time.time()
             for testcase in TestCase.search(author=self.performance.author):
@@ -3811,12 +3821,14 @@ class CaseRun(Mutable):
                 Updating multiple CaseRuns from a TestRun
 
                 Test for fetching caserun states from DB and updating them
-                focusing on the updating part
+                focusing on the updating part. The performance issue is
+                isolated CaseRun state update. The solution might be MultiCall
+                feature.
             """
             start_time = time.time()
             for caserun in TestRun(self.performance.testplan).caseruns:
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
-                caserun.status = Status(Status._statuses[random.randint(1,8)])
+                caserun.status = Status(random.randint(1,8))
                 caserun.update()
             _print_time(time.time() - start_time)
 
@@ -3825,12 +3837,15 @@ class CaseRun(Mutable):
                 Display CaseRuns in TestRuns in TestPlan(s)
 
                 Test for printing test cases that test run contains in
-                specified test plan (for example, test plans connected
-                to RHEL6.4).
+                specified test plan(s) that are children of a master
+                test plan. The delay is caused by repeatedly fetched testcases
+                connected to case runs (although some of them may have already
+                been fetched). Solution can be implementing common caching
+                class, so cached testcases can be used to improve performance.
             """
             start_time = time.time()
-            for testplan in TestPlan.search(
-                    name__contains=self.performance.testplan_search):
+            for testplan in TestPlan(
+                    self.performance.master_testplan).children:
                 log.debug("{0}".format(testplan.name))
                 for testrun in testplan.testruns:
                     log.debug("  {0} {1} {2}".format(testrun, testrun.manager,
