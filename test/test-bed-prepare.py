@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+""" Prepare test bed - create Test Cases, Test Plans and Test Runs """
 
 import nitrate
 import random
@@ -10,14 +11,15 @@ VERSION = nitrate.Version(product=PRODUCT, version="unspecified")
 PLANTYPE = nitrate.PlanType(name="Function")
 CATEGORY = nitrate.Category(category="Regression", product=PRODUCT)
 CASESTATUS = nitrate.CaseStatus("CONFIRMED")
-BUILD = nitrate.Build(product=PRODUCT, build="RHEL6-6.0")
+BUILD = nitrate.Build(product=PRODUCT, build="unspecified")
 
-TAGS = ["tag{0}".format(id) for id in range(7)]
+TAGS = [Tag(id) for id in range(3000, 3200)]
 TESTERS = [nitrate.User(id) for id in range(1000, 1050)]
 
 def parse_options():
     parser = optparse.OptionParser(
-            usage = "./init_tcms [--plans #] [--runs #] [--cases #]")
+            usage = "./test-bed-prepare [--plans #] [--runs #] [--cases #]",
+            description=__doc__.strip())
     parser.add_option("--plans",
             dest = "plans",
             type = "int",
@@ -42,6 +44,23 @@ def parse_options():
 if __name__ == "__main__":
     (options, arguments) = parse_options()
 
+    cases = []
+
+    for case_count in range(options.cases):
+        # Create cases
+        testcase = nitrate.TestCase(
+                name="Test Case {0}".format(case_count+1),
+                category=CATEGORY,
+                product=PRODUCT,
+                summary="Test Case {0}".format(case_count+1),
+                status=CASESTATUS)
+        # Add a tag
+        testcase.tags.add([random.choice(TAGS) for counter in range(10)])
+        # Add tester
+        testcase.tester = random.choice(TESTERS)
+        testcase.update()
+        cases.append(testcase)
+
     # Create master plan (root)
     master = nitrate.TestPlan(name=MASTER_TESTPLAN_NAME,
         product=PRODUCT, version=VERSION,
@@ -52,30 +71,18 @@ if __name__ == "__main__":
         # Create Plans
         testplan = nitrate.TestPlan(
                 name="Test Plan {0}".format(plan_count+1),
-                parent=master.id, product=PRODUCT, version=VERSION.name,
+                parent=master.id, product=PRODUCT, version=VERSION,
                 type=PLANTYPE)
+        # Link all test cases to plan
+        testplan.testcases.add(cases)
+        testplan.update()
         nitrate.info("  * {0}".format(testplan))
-        for case_count in range(options.cases):
-            # Create cases
-            testcase = nitrate.TestCase(
-                    name="Test Case {0}".format(case_count+1),
-                    category=CATEGORY.name,
-                    product=PRODUCT,
-                    summary="Test Case {0}".format(case_count+1),
-                    status=CASESTATUS)
-            # Link with TestPlan
-            testcase.testplans.add(testplan)
-            # Add a tag
-            testcase.tags.add(random.choice(TAGS))
-            # Add tester
-            testcase.tester = random.choice(TESTERS)
-            testcase.update()
         for run_count in range(options.runs):
             # Create runs
             testrun = nitrate.TestRun(
                     testplan=testplan.id,
-                    build=BUILD.name,
+                    build=BUILD,
                     product=PRODUCT,
                     summary="Test Run {0}".format(run_count+1),
-                    version=VERSION.name)
+                    version=VERSION)
             nitrate.info("    * {0}".format(testrun))
