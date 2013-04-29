@@ -59,9 +59,9 @@ if __name__ == "__main__":
                     summary="Test Case {0}".format(case_count+1),
                     status=CASESTATUS)
             # Link with TestPlan
-            nitrate.TestCase(case.id).testplans._add([testplan])
+            case.testplans.add(testplan)
             # Add a tag
-            nitrate.TestCase(case.id).tags._add(random.choice(TAGS))
+            case.tags.add(random.choice(TAGS))
         for run_count in range(0, options.runs):
             # Create runs
             run = nitrate.TestRun(name="Test Run {0}".format(run_count+1),
