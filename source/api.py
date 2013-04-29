@@ -3498,19 +3498,18 @@ class TestCase(Mutable):
                         self.assertEqual(testcase.autoproposed, autoproposed)
                         self.assertEqual(testcase.manual, manual)
 
-        def test_performance_search_testcases_and_author(self):
+        def test_performance_display_testcases_and_author(self):
             """
-                Search for test cases and display authors
+                Print test cases and display their authors
 
-                Test searches a pattern in all test cases and displays the
-                result with their testers. The slowdown here is fetching users
-                from the database (one by one). One solution is persistent
-                local cache with stored objects (users, ...).
+                Test prints all test cases linked to specified test plan and
+                displays the result with their testers. The slowdown here is
+                fetching users from the database (one by one). One solution is
+                persistent local cache with stored objects (users, ...).
 
             """
             start_time = time.time()
-            for testcase in TestCase.search(
-                    summary__contains=self.performance.testcase_search):
+            for testcase in TestPlan(self.performance.testplan):
                 log.debug("{0}: {1}".format(testcase.tester, testcase))
             _print_time(time.time() - start_time)
 
@@ -3526,7 +3525,7 @@ class TestCase(Mutable):
                 cache.
             """
             start_time = time.time()
-            for testcase in TestCase.search(author=self.performance.author):
+            for testcase in TestRun(self.performance.testrun):
                 log.debug("{0} is in test plans:".format(testcase))
                 for testplan in testcase.testplans:
                     log.debug("  {0}".format(testplan.name))
@@ -3844,8 +3843,7 @@ class CaseRun(Mutable):
                 class, so cached testcases can be used to improve performance.
             """
             start_time = time.time()
-            for testplan in TestPlan(
-                    self.performance.master_testplan).children:
+            for testplan in TestPlan(self.performance.testplan).children:
                 log.debug("{0}".format(testplan.name))
                 for testrun in testplan.testruns:
                     log.debug("  {0} {1} {2}".format(testrun, testrun.manager,
