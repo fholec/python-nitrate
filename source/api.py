@@ -377,14 +377,14 @@ def multicall_set(mode=None):
             raise NitrateError("Unable to set multicall mode because caching"
                     "is currently set on CACHE_NONE level")
         _multicall = xmlrpclib.MultiCall(Nitrate()._server)
-        log.info("In order to enable MultiCall feature, CACHE_CHANGES"
-                "level will be used")
     log.debug("MultiCall mode {0}".format(mode))
 
 def multicall_call():
     """ Execute multicall query """
-    if multicall_get() == MULTICALL_ON:
-        return _multicall()
+    if multicall_get() != MULTICALL_ON:
+        raise NitrateError("MultiCall feature is not active")
+
+    return _multicall()
 
 multicall_set()
 
@@ -3817,7 +3817,7 @@ class CaseRun(Mutable):
                 focusing on the updating part
             """
             start_time = time.time()
-            for caserun in TestRun(self.performance.testrun).caseruns:
+            for caserun in TestRun(self.performance.testrun):
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
                 caserun.status = Status(random.randint(1,8))
                 caserun.update()
@@ -3832,11 +3832,11 @@ class CaseRun(Mutable):
             """
             multicall_set(MULTICALL_ON)
             start_time = time.time()
-            for caserun in TestRun(self.performance.testrun).caseruns:
+            for caserun in TestRun(self.performance.testrun):
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
                 caserun.status = Status(random.randint(1,8))
                 caserun.update()
-                multicall_call()
+            multicall_call()
             _print_time(time.time() - start_time)
             multicall_set(MULTICALL_OFF)
 
