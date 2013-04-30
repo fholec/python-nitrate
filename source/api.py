@@ -1631,17 +1631,13 @@ class Container(Mutable):
     #  Container Special
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def __init__(self, object,initial_values=None):
+    def __init__(self, object):
         """ Initialize container for specified object. """
         Mutable.__init__(self, object.id)
         self._class = object.__class__
         self._identifier = object.identifier
-        if initial_values is None:
-           self._current = NitrateNone
-           self._original = NitrateNone
-        else:
-           self._current = initial_values
-           self._original = initial_values
+        self._current = NitrateNone
+        self._original = NitrateNone
 
     def __iter__(self):
         """ Container iterator. """
@@ -2240,7 +2236,7 @@ class Tag(Nitrate):
 
     def __new__(cls, id=None, name=None, **kwargs):
         """ Create a new object, handle caching if enabled. """
-        if _cache_level >= CACHE_OBJECTS and id is not None:
+        if _cache_level >= CACHE_OBJECTS and isinstance(id, int):
             # Search the cache
             if id in Tag._cache:
                 log.debug("Using cached tag ID#{0}".format(id))
