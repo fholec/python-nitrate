@@ -343,12 +343,12 @@ def ascii(text):
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#  DateTime methods
+#  Internal Utilities
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def _print_time(elapsed_time):
     converted_time = str(datetime.timedelta(seconds=elapsed_time)).split('.')
-    sys.stderr.write(" {0} ".format(converted_time[0]))
+    sys.stderr.write("{0} ... ".format(converted_time[0]))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #  Nitrate None Class
@@ -2389,7 +2389,6 @@ class CaseTags(Container):
             self.testcase = Nitrate()._config.testcase
             self.performance = Nitrate()._config.performance
 
-
         def testTagging1(self):
             """ Untagging a test case """
             # Remove tag and check
@@ -2417,16 +2416,16 @@ class CaseTags(Container):
             testcase = TestCase(self.testcase.id)
             self.assertTrue("TestTag" not in testcase.tags)
 
-        def test_performance_check_tags(self):
-            """ Display tags of test cases
+        def test_performance_testcase_tags(self):
+            """ Checking tags of test cases
 
-            Test prints tags from a test cases present in a test plan.
+            Test checks tags from a test cases present in a test plan.
             The problem in this case is separate fetching of tag names
             for every test case (one query per case).
             """
             start_time = time.time()
             for case in TestPlan(self.performance.testplan):
-                log.debug("{0}: {1}".format(case, case.tags))
+                log.info("{0}: {1}".format(case, case.tags))
             _print_time(time.time() - start_time)
 
 
@@ -3497,31 +3496,31 @@ class TestCase(Mutable):
                         self.assertEqual(testcase.autoproposed, autoproposed)
                         self.assertEqual(testcase.manual, manual)
 
-        def test_performance_display_testcases_and_author(self):
-            """ Print test cases and display their authors
+        def test_performance_testcases_and_testers(self):
+            """ Checking test cases and their default testers
 
-            Test prints all test cases linked to specified test plan and
+            Test checks all test cases linked to specified test plan and
             displays the result with their testers. The slowdown here is
             fetching users from the database (one by one).
             """
             start_time = time.time()
             for testcase in TestPlan(self.performance.testplan):
-                log.debug("{0}: {1}".format(testcase.tester, testcase))
+                log.info("{0}: {1}".format(testcase.tester, testcase))
             _print_time(time.time() - start_time)
 
-        def test_performance_test_cases_and_test_plans(self):
-            """ Show test cases from author and their test plans
+        def test_performance_testcases_and_testplans(self):
+            """ Checking test plans linked to test cases
 
-            Test displays test cases from specified author and also test
-            plans which contain these test cases. The main problem is
-            fething the same test plans multiple times if they contain
-            more than one test case in the set.
+            Test checks test cases and plans which contain these test
+            cases.  The main problem is fetching the same test plans
+            multiple times if they contain more than one test case in
+            the set.
             """
             start_time = time.time()
             for testcase in TestPlan(self.performance.testplan):
-                log.debug("{0} is in test plans:".format(testcase))
+                log.info("{0} is in test plans:".format(testcase))
                 for testplan in testcase.testplans:
-                    log.debug("  {0}".format(testplan.name))
+                    log.info("  {0}".format(testplan.name))
             _print_time(time.time() - start_time)
 
 
@@ -3803,6 +3802,7 @@ class CaseRun(Mutable):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Case Runs Self Test
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     class _test(unittest.TestCase):
         def setUp(self):
             """ Set up performance test configuration from the config """
@@ -3811,21 +3811,21 @@ class CaseRun(Mutable):
         def test_performance_update_caseruns(self):
             """ Updating multiple CaseRuns from a TestRun
 
-            Test for fetching caserun states from DB and updating them
-            focusing on the updating part. The performance issue is
-            isolated CaseRun state update.
+            Test for fetching caserun states and updating them focusing
+            on the updating part. The performance issue is isolated
+            CaseRun state update.
             """
             start_time = time.time()
             for caserun in TestRun(self.performance.testrun):
-                log.debug("{0} {1}".format(caserun.id, caserun.status))
+                log.info("{0} {1}".format(caserun.id, caserun.status))
                 caserun.status = Status(random.randint(1,8))
                 caserun.update()
             _print_time(time.time() - start_time)
 
-        def test_performance_test_cases_in_case_runs(self):
-            """ Display CaseRuns in TestRuns in TestPlan(s)
+        def test_performance_testcases_in_caseruns(self):
+            """ Checking CaseRuns in TestRuns in TestPlans
 
-            Test for printing test cases that test run contains in
+            Test for checking test cases that test run contains in
             specified test plan(s) that are children of a master
             test plan. The delay is caused by repeatedly fetched testcases
             connected to case runs (although some of them may have already
@@ -3833,13 +3833,13 @@ class CaseRun(Mutable):
             """
             start_time = time.time()
             for testplan in TestPlan(self.performance.testplan).children:
-                log.debug("{0}".format(testplan.name))
+                log.info("{0}".format(testplan.name))
                 for testrun in testplan.testruns:
-                    log.debug("  {0} {1} {2}".format(testrun, testrun.manager,
-                            testrun.status))
+                    log.info("  {0} {1} {2}".format(
+                            testrun, testrun.manager, testrun.status))
                     for caserun in testrun.caseruns:
-                        log.debug("    {0} {1} {2}".format(caserun,
-                                caserun.testcase, caserun.status))
+                        log.info("    {0} {1} {2}".format(
+                                caserun, caserun.testcase, caserun.status))
             _print_time(time.time() - start_time)
 
 
