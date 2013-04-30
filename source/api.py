@@ -2420,10 +2420,9 @@ class CaseTags(Container):
         def test_performance_check_tags(self):
             """ Display tags of test cases
 
-                Test prints tags from a test cases present in a test plan.
-                The problem in this case is separate fetching of tag names
-                for every test case (one query per case). It can be improved
-                by implementing Tag class with caching.
+            Test prints tags from a test cases present in a test plan.
+            The problem in this case is separate fetching of tag names
+            for every test case (one query per case).
             """
             start_time = time.time()
             for case in TestPlan(self.performance.testplan):
@@ -3499,14 +3498,11 @@ class TestCase(Mutable):
                         self.assertEqual(testcase.manual, manual)
 
         def test_performance_display_testcases_and_author(self):
-            """
-                Print test cases and display their authors
+            """ Print test cases and display their authors
 
-                Test prints all test cases linked to specified test plan and
-                displays the result with their testers. The slowdown here is
-                fetching users from the database (one by one). One solution is
-                persistent local cache with stored objects (users, ...).
-
+            Test prints all test cases linked to specified test plan and
+            displays the result with their testers. The slowdown here is
+            fetching users from the database (one by one).
             """
             start_time = time.time()
             for testcase in TestPlan(self.performance.testplan):
@@ -3514,18 +3510,15 @@ class TestCase(Mutable):
             _print_time(time.time() - start_time)
 
         def test_performance_test_cases_and_test_plans(self):
-            """
-                Show test cases from author and their test plans
+            """ Show test cases from author and their test plans
 
-                Test displays test cases from specified author and also test
-                plans which contain these test cases. The main problem is
-                fething the same test plans multiple times if they contain
-                more than one test case in the set. Solution might be caching
-                test plans (so only one fetch is required) or persistent
-                cache.
+            Test displays test cases from specified author and also test
+            plans which contain these test cases. The main problem is
+            fething the same test plans multiple times if they contain
+            more than one test case in the set.
             """
             start_time = time.time()
-            for testcase in TestRun(self.performance.testrun):
+            for testcase in TestPlan(self.performance.testplan):
                 log.debug("{0} is in test plans:".format(testcase))
                 for testplan in testcase.testplans:
                     log.debug("  {0}".format(testplan.name))
@@ -3816,13 +3809,11 @@ class CaseRun(Mutable):
             self.performance = Nitrate()._config.performance
 
         def test_performance_update_caseruns(self):
-            """
-                Updating multiple CaseRuns from a TestRun
+            """ Updating multiple CaseRuns from a TestRun
 
-                Test for fetching caserun states from DB and updating them
-                focusing on the updating part. The performance issue is
-                isolated CaseRun state update. The solution might be MultiCall
-                feature.
+            Test for fetching caserun states from DB and updating them
+            focusing on the updating part. The performance issue is
+            isolated CaseRun state update.
             """
             start_time = time.time()
             for caserun in TestRun(self.performance.testplan).caseruns:
@@ -3832,15 +3823,13 @@ class CaseRun(Mutable):
             _print_time(time.time() - start_time)
 
         def test_performance_test_cases_in_case_runs(self):
-            """
-                Display CaseRuns in TestRuns in TestPlan(s)
+            """ Display CaseRuns in TestRuns in TestPlan(s)
 
-                Test for printing test cases that test run contains in
-                specified test plan(s) that are children of a master
-                test plan. The delay is caused by repeatedly fetched testcases
-                connected to case runs (although some of them may have already
-                been fetched). Solution can be implementing common caching
-                class, so cached testcases can be used to improve performance.
+            Test for printing test cases that test run contains in
+            specified test plan(s) that are children of a master
+            test plan. The delay is caused by repeatedly fetched testcases
+            connected to case runs (although some of them may have already
+            been fetched).
             """
             start_time = time.time()
             for testplan in TestPlan(self.performance.testplan).children:

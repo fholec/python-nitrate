@@ -125,7 +125,6 @@ Performance test suite
 
     [performance]
     testplan = 8020
-    testrun = 52167
 
 
 To exercise the whole test suite just run "python nitrate.py". To test
