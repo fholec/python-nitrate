@@ -3816,7 +3816,7 @@ class CaseRun(Mutable):
             isolated CaseRun state update.
             """
             start_time = time.time()
-            for caserun in TestRun(self.performance.testplan).caseruns:
+            for caserun in TestRun(self.performance.testrun):
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
                 caserun.status = Status(random.randint(1,8))
                 caserun.update()

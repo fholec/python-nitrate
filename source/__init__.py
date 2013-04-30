@@ -124,8 +124,8 @@ Performance test suite
 ~~~~~~~~~~~
 
     [performance]
-    testplan = 8020
-
+    testplan = 1234
+    testrun = 12345
 
 To exercise the whole test suite just run "python nitrate.py". To test
 only subset of tests pick the desired classes on the command line:
