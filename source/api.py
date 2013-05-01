@@ -342,51 +342,17 @@ def ascii(text):
 #  MultiCall methods
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-MULTICALL_ON = 1
-MULTICALL_OFF = 0
+def multicall_start():
+    """ Enter MultiCall mode (queue xmlrpc calls) """
+    Nitrate._multicall_proxy = xmlrpclib.MultiCall(Nitrate()._server)
 
-_multicall_mode = MULTICALL_OFF
+def multicall_end():
+    """ Execute MultiCall query and exit MultiCall mode """
+    response = Nitrate._multicall_proxy()
+    Nitrate._multicall_proxy = None
+    Nitrate._requests += 1
 
-def multicall_get():
-    """ Get current multicall mode """
-    return _multicall_mode
-
-def multicall_set(mode=None):
-    """
-    Set the multicall mode
-
-    If enabled, some objects (currently only from CaseRun class) will use
-    MultiCall for updating its states (thus speeding up the process).
-
-    Possible values are:
-
-    MULTICALL_ON ..... multicall enabled
-    MULTICALL_OFF .... multicall disabled
-    """
-
-    global _multicall_mode
-    global _multicall
-    if mode is None:
-        _multicall_mode = MULTICALL_OFF
-    else:
-        if mode not in [MULTICALL_ON, MULTICALL_OFF]:
-            raise NitrateError("Invalid multicall mode '{0}'".format(mode))
-        _multicall_mode = mode
-    if mode == MULTICALL_ON:
-        if get_cache_level() == CACHE_NONE:
-            raise NitrateError("Unable to set multicall mode because caching"
-                    "is currently set on CACHE_NONE level")
-        _multicall = xmlrpclib.MultiCall(Nitrate()._server)
-    log.debug("MultiCall mode {0}".format(mode))
-
-def multicall_call():
-    """ Execute multicall query """
-    if multicall_get() != MULTICALL_ON:
-        raise NitrateError("MultiCall feature is not active")
-
-    return _multicall()
-
-multicall_set()
+    return response
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -469,6 +435,7 @@ class Nitrate(object):
     _connection = None
     _settings = None
     _requests = 0
+    _multicall_proxy = None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Nitrate Properties
@@ -505,6 +472,15 @@ class Nitrate(object):
         # Return existing connection
         Nitrate._requests += 1
         return Nitrate._connection
+
+    @property
+    def _multicall(self):
+        """ If multicall is enabled, put (update) query to queue,
+            otherwise send directly to server  """
+        if Nitrate._multicall_proxy is not None:
+            return self._multicall_proxy
+        else:
+            return self._server
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Nitrate Special
@@ -2671,7 +2647,7 @@ class TestPlan(Mutable):
 
         log.info("Updating test plan " + self.identifier)
         log.debug(pretty(hash))
-        self._server.TestPlan.update(self.id, hash)
+        self._multicall.TestPlan.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
@@ -3014,7 +2990,7 @@ class TestRun(Mutable):
 
         log.info("Updating test run " + self.identifier)
         log.debug(pretty(hash))
-        self._server.TestRun.update(self.id, hash)
+        self._multicall.TestRun.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
@@ -3387,7 +3363,7 @@ class TestCase(Mutable):
 
         log.info("Updating test case " + self.identifier)
         log.debug(pretty(hash))
-        self._server.TestCase.update(self.id, hash)
+        self._multicall.TestCase.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
@@ -3785,10 +3761,7 @@ class CaseRun(Mutable):
 
         log.info("Updating case run " + self.identifier)
         log.debug(pretty(hash))
-        if multicall_get() == MULTICALL_OFF:
-            self._server.TestCaseRun.update(self.id, hash)
-        else:
-            _multicall.TestCaseRun.update(self.id, hash)
+        self._multicall.TestCaseRun.update(self.id, hash)
 
     def update(self):
         """ Update self and containers, if modified, to the server """
@@ -3830,15 +3803,14 @@ class CaseRun(Mutable):
                 Test for fetching caserun states from DB and updating them
                 focusing on the updating part with MultiCall
             """
-            multicall_set(MULTICALL_ON)
+            multicall_start()
             start_time = time.time()
             for caserun in TestRun(self.performance.testrun):
                 log.debug("{0} {1}".format(caserun.id, caserun.status))
                 caserun.status = Status(random.randint(1,8))
                 caserun.update()
-            multicall_call()
+            multicall_end()
             _print_time(time.time() - start_time)
-            multicall_set(MULTICALL_OFF)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

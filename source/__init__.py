@@ -62,6 +62,21 @@ status use 'print Nitrate()' which gives a short summary like this:
     Nitrate server: https://nitrate.server/xmlrpc/
     Total requests handled: 0
 
+MultiCall support
+~~~~~~~~~~~~~~~~~
+
+Multicall feature is used to encapsulate multiple calls to a remote server into
+a single request. If enabled, some objects will use MultiCall for updating its
+states (thus speeding up the process).
+
+These methods are available to handle MultiCall feature:
+
+    multicall_start()
+    multicall_end()
+
+When multicall_start() is called, update queries are not be sent immediately to
+server. Instead, they are queued and after multicall_end() is called, all
+queries are sent to server in a batch
 
 Search support
 ~~~~~~~~~~~~~~
@@ -144,5 +159,6 @@ __all__ = """
         setColorMode COLOR_ON COLOR_OFF COLOR_AUTO
         set_log_level set_cache_level set_color_mode
         get_log_level get_cache_level get_color_mode
+        multicall_start multicall_end
         """.split()
 
