@@ -535,7 +535,8 @@ class Nitrate(object):
         # Search the cache for ID
         try:
             temp = cls._cache_lookup(id, **kwargs)
-            log.debug("Using cached object {0} {1}".format(cls.__name__, temp.id))
+            log.debug("Using cached object {0} {1}".format(
+                    cls.__name__, temp.id))
             return temp
         except KeyError:
             # Object not cached yet, create a new one and cache it
@@ -682,9 +683,6 @@ class Build(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int):
-            return cls._cache[id]
 
         # Name and product check
         if 'product' in kwargs and 'build' in kwargs:
@@ -694,17 +692,7 @@ class Build(Nitrate):
             name = kwargs.get("build")
             return cls._cache[name+')('+product]
 
-        # Check dictionary
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'product' in id and 'build' in id:
-                product = kwargs.get("product")
-                if isinstance(product, Product):
-                    product = product.name
-                name = kwargs.get("build")
-                return cls._cache[id[name+')('+product]]
-
+        return super(Build, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -821,7 +809,7 @@ class Build(Nitrate):
             build = Build(self.build.id)
             log.info(build.name)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             Build._cache = {}
             set_cache_level(CACHE_OBJECTS)
             build = Build(self.build.id)
@@ -860,9 +848,6 @@ class Category(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int):
-            return cls._cache[id]
 
         # Name and product check
         if 'product' in kwargs and 'category' in kwargs:
@@ -872,17 +857,7 @@ class Category(Nitrate):
             name = kwargs.get("category")
             return cls._cache[name+')('+product]
 
-        # Check dictionary
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'product' in id and 'category' in id:
-                product = kwargs.get("product")
-                if isinstance(product, Product):
-                    product = product.name
-                name = kwargs.get("category")
-                return cls._cache[id[name+')('+product]]
-
+        return super(Category, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -965,8 +940,8 @@ class Category(Nitrate):
                     log.debug(pretty(hash))
                     self._id = hash["id"]
                 except xmlrpclib.Fault:
-                    raise NitrateError("Category '{0}' not found in '{1}'".format(
-                        self.name, self.product.name))
+                    raise NitrateError("Category '{0}' not found in"\
+                           " '{1}'".format(self.name, self.product.name))
         else:
             # Save values
             log.debug("Initializing Category ID#{0}".format(inject["id"]))
@@ -1055,20 +1030,10 @@ class PlanType(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
-            return cls._cache[id]
-
         if 'name' in kwargs:
             return cls._cache[kwargs.get("name")]
 
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'name' in id:
-                name = kwargs.get("name")
-                return cls._cache[id[name]]
-
+        return super(PlanType, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1136,12 +1101,13 @@ class PlanType(Nitrate):
                     log.debug(pretty(hash))
                     self._name = hash["name"]
                 except xmlrpclib.Fault:
-                    raise NitrateError(
-                            "Cannot find test plan type for " + self.identifier)
+                    raise NitrateError("Cannot find test plan type for " \
+                                    + self.identifier)
             # Search by name
             else:
                 try:
-                    log.info(u"Fetching test plan type '{0}'".format(self.name))
+                    log.info(u"Fetching test plan type '{0}'".format(
+                            self.name))
                     hash = self._server.TestPlan.check_plan_type(self.name)
                     log.debug(u"Initializing test plan type '{0}'".format(
                             self.name))
@@ -1236,7 +1202,7 @@ class PlanType(Nitrate):
             log.info(plantype2.id)
             self.assertEqual(Nitrate._requests, requests + 2)
             self.assertNotEqual(id(plantype), id(plantype2))
-            # Trun on caching
+            # Turn on caching
             PlanType._cache = {}
             set_cache_level(CACHE_OBJECTS)
             plantype = PlanType(self.plantype.id)
@@ -1335,20 +1301,10 @@ class Product(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
-            return cls._cache[id]
-
         if 'name' in kwargs:
             return cls._cache[kwargs.get("name")]
 
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'name' in id:
-                name = kwargs.get("name")
-                return cls._cache[id[name]]
-
+        return super(Product, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1454,7 +1410,8 @@ class Product(Nitrate):
             self._id = inject["id"]
             self._name = inject["name"]
             if 'version' in inject:
-                self._version = Version(product=self, version=inject["version"])
+                self._version = Version(product=self, \
+                        version=inject["version"])
 
         if get_cache_level() >= CACHE_OBJECTS:
             Product._cache[self.id] = Product._cache[self.name] = self
@@ -1497,7 +1454,7 @@ class Product(Nitrate):
             product = Product(self.product.id)
             log.info(product.name)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             Product._cache = {}
             set_cache_level(CACHE_OBJECTS)
             product = Product(self.product.id)
@@ -1518,7 +1475,7 @@ class Product(Nitrate):
             log.info(product2.id)
             self.assertEqual(Nitrate._requests, requests + 2)
             self.assertNotEqual(id(product), id(product2))
-            # Trun on caching
+            # Turn on caching
             Product._cache = {}
             set_cache_level(CACHE_OBJECTS)
             product = Product(self.product.id)
@@ -1540,7 +1497,7 @@ class Product(Nitrate):
             log.info(product2.name)
             self.assertEqual(Nitrate._requests, requests + 2)
             self.assertNotEqual(id(product), id(product2))
-            # Trun on caching
+            # Turn on caching
             Product._cache = {}
             set_cache_level(CACHE_OBJECTS)
             product = Product(self.product.name)
@@ -1773,20 +1730,13 @@ class User(Nitrate):
         if id is None and 'login' not in kwargs and 'email' not in kwargs:
             return cls._cache["i-am-current-user"]
 
-        # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
-            return cls._cache[id]
-
         if 'login' in kwargs:
             return cls._cache[kwargs.get("login")]
 
         if 'email' in kwargs:
             return cls._cache[kwargs.get("email")]
 
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-
+        return super(User, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1929,7 +1879,7 @@ class User(Nitrate):
             user = User(self.user.id)
             log.info(user.login)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             User._cache = {}
             set_cache_level(CACHE_OBJECTS)
             user = User(self.user.id)
@@ -1951,7 +1901,7 @@ class User(Nitrate):
             log.info(user3.name)
             self.assertEqual(Nitrate._requests, requests + 3)
             self.assertNotEqual(id(user), id(user2), id(user3))
-            # Trun on caching
+            # Turn on caching
             User._cache = {}
             set_cache_level(CACHE_OBJECTS)
             user = User(self.user.id)
@@ -1976,7 +1926,7 @@ class User(Nitrate):
             log.info(user3.name)
             self.assertEqual(Nitrate._requests, requests + 3)
             self.assertNotEqual(id(user), id(user2), id(user3))
-            # Trun on caching
+            # Turn on caching
             User._cache = {}
             set_cache_level(CACHE_OBJECTS)
             user = User(self.user.login)
@@ -2001,7 +1951,7 @@ class User(Nitrate):
             log.info(user3.name)
             self.assertEqual(Nitrate._requests, requests + 3)
             self.assertNotEqual(id(user), id(user2), id(user3))
-            # Trun on caching
+            # Turn on caching
             User._cache = {}
             set_cache_level(CACHE_OBJECTS)
             user = User(self.user.email)
@@ -2036,9 +1986,6 @@ class Version(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int):
-            return cls._cache[id]
 
         # Name and product check
         if 'product' in kwargs and 'version' in kwargs:
@@ -2048,17 +1995,7 @@ class Version(Nitrate):
             name = kwargs.get("version")
             return cls._cache[name+')('+product]
 
-        # Check dictionary (only ID so far)
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'product' in id and 'version' in id:
-                product = kwargs.get("product")
-                if isinstance(product, Product):
-                    product = product.name
-                name = kwargs.get("version")
-                return cls._cache[id[name+')('+product]]
-
+        return super(Version, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2122,7 +2059,8 @@ class Version(Nitrate):
             if self._id is not NitrateNone:
                 try:
                     log.info("Fetching version " + self.identifier)
-                    hash = self._server.Product.filter_versions({'id': self.id})
+                    hash = self._server.Product.filter_versions(
+                            {'id': self.id})
                     log.debug("Initializing version " + self.identifier)
                     log.debug(pretty(hash))
                     self._name = hash[0]["value"]
@@ -2176,7 +2114,7 @@ class Version(Nitrate):
             version = Version(self.version.id)
             log.info(version.name)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             Version._cache = {}
             set_cache_level(CACHE_OBJECTS)
             version = Version(self.version.id)
@@ -2377,9 +2315,6 @@ class Component(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
-        # ID check
-        if isinstance(id, int):
-            return cls._cache[id]
 
         # Name and product check
         if 'product' in kwargs and 'name' in kwargs:
@@ -2389,17 +2324,7 @@ class Component(Nitrate):
             name = kwargs.get("name")
             return cls._cache[name+')('+product]
 
-        # Check dictionary
-        if isinstance(id, dict):
-            if 'id' in id:
-                return cls._cache[id['id']]
-            elif 'product' in id and 'name' in id:
-                product = kwargs.get("product")
-                if isinstance(product, Product):
-                    product = product.name
-                name = kwargs.get("name")
-                return cls._cache[id[name+')('+product]]
-
+        return super(Component, cls)._cache_lookup(id, **kwargs)
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2480,8 +2405,8 @@ class Component(Nitrate):
                     log.debug(pretty(componenthash))
                     self._id = componenthash["id"]
                 except LookupError:
-                    raise NitrateError("Component '{0}' not found in '{1}'".format(
-                        self.name, self.product.name))
+                    raise NitrateError("Component '{0}' not found in"\
+                           " '{1}'".format(self.name, self.product.name))
         else:
             componenthash = inject
             self._id = componenthash["id"]
@@ -2992,7 +2917,8 @@ class PlanTags(Container):
         log.info("Fetching tags for {0}".format(self._identifier))
         hash = self._server.TestPlan.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag(tag["id"]) for tag in hash])
+        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
+                for tag in hash])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -3005,7 +2931,8 @@ class PlanTags(Container):
         """ Detach provided tags from the test plan. """
         log.info(u"Untagging {0} of {1}".format(
                 self._identifier, listed(tags, quote="'")))
-        self._server.TestPlan.remove_tag(self.id, list(tag.name for tag in tags))
+        self._server.TestPlan.remove_tag(self.id, list(
+                tag.name for tag in tags))
 
     # Print unicode list of tags
     def __unicode__(self):
@@ -3060,7 +2987,8 @@ class RunTags(Container):
         log.info("Fetching tags for {0}".format(self._identifier))
         hash = self._server.TestRun.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag(tag["id"]) for tag in hash])
+        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
+               for tag in hash])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -3073,7 +3001,8 @@ class RunTags(Container):
         """ Detach provided tags from the test run. """
         log.info(u"Untagging {0} of {1}".format(
                 self._identifier, listed(tags, quote="'")))
-        self._server.TestRun.remove_tag(self.id, list(tag.name for tag in tags))
+        self._server.TestRun.remove_tag(self.id, list(
+                tag.name for tag in tags))
 
     # Print unicode list of tags
     def __unicode__(self):
@@ -3128,7 +3057,8 @@ class CaseTags(Container):
         log.info("Fetching tags for {0}".format(self._identifier))
         hash = self._server.TestCase.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag(tag["id"]) for tag in hash])
+        self._current = set([Tag({'id':tag["id"], 'name':["name"]}) \
+                for tag in hash])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -3141,7 +3071,8 @@ class CaseTags(Container):
         """ Detach provided tags from the test case. """
         log.info(u"Untagging {0} of {1}".format(
                 self._identifier, listed(tags, quote="'")))
-        self._server.TestCase.remove_tag(self.id, list(tag.name for tag in tags))
+        self._server.TestCase.remove_tag(self.id, list(
+                tag.name for tag in tags))
 
     # Print unicode list of tags
     def __unicode__(self):
@@ -3529,7 +3460,7 @@ class TestPlan(Mutable):
             testplan = TestPlan(self.testplan.id)
             log.info(testplan.name)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             TestPlan._cache = {}
             set_cache_level(CACHE_OBJECTS)
             testplan = TestPlan(self.testplan.id)
@@ -3956,7 +3887,7 @@ class TestRun(Mutable):
             testrun = TestRun(self.testrun.id)
             log.info(testrun.summary)
             self.assertEqual(Nitrate._requests, requests + 2)
-            # Trun on caching
+            # Turn on caching
             TestRun._cache = {}
             set_cache_level(CACHE_OBJECTS)
             testrun = TestRun(self.testrun.id)
@@ -4642,7 +4573,7 @@ class CaseRun(Mutable):
             id = caseruninject["case_run_id"]
         Mutable.__init__(self, id, prefix="CR")
 
-        # If initial object dict provided, let's initialize the data immediately
+        # If initial object dict provided, let's initialize the data
         if caseruninject and testcaseinject:
             self._get(caseruninject=caseruninject,
                     testcaseinject=testcaseinject)
