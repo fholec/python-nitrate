@@ -482,14 +482,6 @@ class Nitrate(object):
         Nitrate._requests += 1
         return Nitrate._connection
 
-    def _init(self):
-        """ Method sets all attributes of an object to NitrateNone """
-        try:
-            for attr in self._attributes:
-                setattr(self, "_" + attr, NitrateNone)
-        except AttributeError:
-            self._attributes = []
-
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Class method that checks if object with id is already in cache """
@@ -605,6 +597,10 @@ class Nitrate(object):
     #  Nitrate Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        raise NitrateError("To be implemented by respective class")
+
     def _get(self):
         """ Fetch object data from the server. """
         raise NitrateError("To be implemented by respective class")
@@ -696,7 +692,6 @@ class Build(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["name"]
         self._init()
         # Initialized by dictionary
         if isinstance(id, dict):
@@ -734,6 +729,10 @@ class Build(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Build Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.product = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing build data. """
@@ -843,7 +842,6 @@ class Category(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["name", "product"]
         self._init()
         # Init by initial object dict
         if isinstance(id, dict):
@@ -880,6 +878,10 @@ class Category(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Category Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.product = self.description = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing category data. """
@@ -1007,7 +1009,6 @@ class PlanType(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["name"]
         self._init()
         # Initialization by initial object dict
         if isinstance(id, dict):
@@ -1044,6 +1045,10 @@ class PlanType(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  PlanType Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing test plan type data """
@@ -1269,7 +1274,6 @@ class Product(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["name", "version"]
         self._init()
         # Init by initial object dict
         if isinstance(id, dict):
@@ -1320,6 +1324,10 @@ class Product(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Product Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.version = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch product data from the server. """
@@ -1683,7 +1691,6 @@ class User(Nitrate):
             return
 
         # Initialize values
-        self._attributes = ["name", "login", "email"]
         self._init()
         id, login, email = self._parse(id, login, email)
         # Init by initial object dict
@@ -1714,6 +1721,10 @@ class User(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.login = self.email = NitrateNone
 
     @staticmethod
     def _parse(id, login, email):
@@ -1916,7 +1927,6 @@ class Version(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["product","version"]
         self._init()
         # Init by initial object dict
         if isinstance(id, dict):
@@ -1954,6 +1964,10 @@ class Version(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Version Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.product = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch version data from the server. """
@@ -2227,7 +2241,6 @@ class Component(Nitrate):
             return
 
         # Prepare attributes, check component hash, initialize
-        self._attributes = ["name", "product"]
         self._init()
         if isinstance(id, dict):
             inject = id
@@ -2261,6 +2274,10 @@ class Component(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Component Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = self.product = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing component data. """
@@ -2548,6 +2565,10 @@ class Bug(Nitrate):
     #  Bug Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.bug = self.system = self.testcase = self.caserun = NitrateNone
+
     def _get(self):
         """ Fetch bug info from the server. """
         # No direct xmlrpc function for fetching so far
@@ -2707,7 +2728,6 @@ class Tag(Nitrate):
         if getattr(self, "_id", None) is not None:
             return
 
-        self._attributes = ["name"]
         self._init()
         # Initialized by initial object dict
         if isinstance(id, dict):
@@ -2741,6 +2761,10 @@ class Tag(Nitrate):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Tag Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        self.name = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch tag data from the server. """
@@ -3092,8 +3116,6 @@ class TestPlan(Mutable):
             return
 
         # Prepare attributes, check test plan hash, initialize
-        self._attributes = """author children name parent product status tags
-                testcases testruns type""".split()
         self._init()
         if isinstance(id, dict):
             inject = id
@@ -3132,6 +3154,12 @@ class TestPlan(Mutable):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Plan Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        for attr in """author children name parent product status tags
+                testcases testruns type""".split():
+            setattr(self, "_" + attr, NitrateNone)
 
     def _create(self, name, product, version, type, **kwargs):
 
@@ -3493,8 +3521,6 @@ class TestRun(Mutable):
             return
 
         # Prepare attributes, check test run hash, initialize
-        self._attributes = """build caseruns errata manager notes product
-                status summary tags tester testplan time """.split()
         self._init()
         if isinstance(id, dict):
             inject = id
@@ -3532,6 +3558,12 @@ class TestRun(Mutable):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Run Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        for attr in """build caseruns errata manager notes product
+                status summary tags tester testplan time""".split():
+            setattr(self, "_" + attr, NitrateNone)
 
     def _create(self, testplan, product=None, version=None, build=None,
             summary=None, notes=None, manager=None, tester=None, tags=None,
@@ -3876,10 +3908,6 @@ class TestCase(Mutable):
             return
 
         # Prepare attributes, check test case hash, initialize
-        self._attributes = """arguments author automated autoproposed bugs
-                category components link manual notes plans priority product
-                script sortkey status summary tags tester testplans
-                time""".split()
         self._init()
         if isinstance(id, dict):
             inject = id
@@ -3913,6 +3941,13 @@ class TestCase(Mutable):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Case Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        for attr in """arguments author automated autoproposed bugs category
+                components link manual notes plans priority product script
+                sortkey status summary tags tester testplans time""".split():
+            setattr(self, "_" + attr, NitrateNone)
 
     def _create(self, summary, category, product, **kwargs):
         """ Create a new test case. """
@@ -4425,8 +4460,6 @@ class CaseRun(Mutable):
             return
 
         # Prepare attributes, check data hashes, initialize
-        self._attributes = """assignee bugs build notes sortkey status
-                testcase testrun""".split()
         self._init()
         caseruninject = kwargs.get("caseruninject", None)
         testcaseinject = kwargs.get("testcaseinject", None)
@@ -4462,6 +4495,12 @@ class CaseRun(Mutable):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Case Run Methods
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _init(self):
+        """ Set all object attributes to NitrateNone """
+        for attr in """assignee bugs build notes sortkey status testcase
+                testrun""".split():
+            setattr(self, "_" + attr, NitrateNone)
 
     def _create(self, testcase, testrun, **kwargs):
         """ Create a new case run. """
