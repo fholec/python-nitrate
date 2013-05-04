@@ -541,7 +541,7 @@ class Nitrate(object):
     def __new__(cls, id=None, **kwargs):
         """ Create a new object, handle caching if enabled. """
 
-        if _cache_level < CACHE_OBJECTS or cls not in Cache._classes:
+        if _cache_level < CACHE_OBJECTS or cls not in CLASSES:
             return super(Nitrate, cls).__new__(cls)
 
         # Search the cache for ID
@@ -3311,7 +3311,7 @@ class TestPlan(Mutable):
 
         def testFetchTestCases(self):
             """ Test fetches all test cases in a plan """
-            Cache.clear_cache()
+            TestPlan._cache = {}
             requests = Nitrate._requests
             testplan = TestPlan(self.testplan.id)
             log.info(testplan.testcases)
@@ -3319,7 +3319,7 @@ class TestPlan(Mutable):
 
         def testTestPlanCaching(self):
             """ Test caching in TestPlan class """
-            Cache.clear_cache()
+            TestPlan._cache = {}
             requests = Nitrate._requests
             # Turn off caching
             set_cache_level(CACHE_NONE)
@@ -4624,6 +4624,10 @@ class CaseRun(Mutable):
                         log.info("    {0} {1} {2}".format(
                                 caserun, caserun.testcase, caserun.status))
             _print_time(time.time() - start_time)
+
+CLASSES = [Build, Category, PlanType, Product, User, Version,
+        CaseRun, TestCase, TestPlan, TestRun, Component]
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
