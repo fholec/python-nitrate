@@ -505,7 +505,7 @@ class Nitrate(object):
 
         # Check list of IDs
         if isinstance(id, list):
-            return all(_is_cached(i) for i in id)
+            return all(cls._is_cached(i) for i in id)
 
         return False
 
@@ -733,7 +733,7 @@ class Build(Nitrate):
                     "and build name to initialize the Build object.")
         Nitrate.__init__(self, id)
         # Create entries in cache that reference the same object
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -897,7 +897,7 @@ class Category(Nitrate):
             raise NitrateError("Need either category id or both product "
                     "and category name to initialize the Category object.")
         Nitrate.__init__(self, id)
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -1073,7 +1073,7 @@ class PlanType(Nitrate):
                     "Need either id or name to initialize the PlanType object")
         Nitrate.__init__(self, id)
 
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -1347,14 +1347,18 @@ class Product(Nitrate):
             raise NitrateError("Need id or name to initialize Product")
         Nitrate.__init__(self, id)
 
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
-        # Optionally initialize version
-        if version is not None:
-            self._version = Version(product=self, version=version)
-        else:
-            self._version = NitrateNone
+        if self._version is NitrateNone:
+            # Optionally initialize version
+            if version is not None:
+                self._version = Version(product=self, version=version)
+            else:
+                self._version = NitrateNone
+
+        if get_cache_level() >= CACHE_OBJECTS:
+            Product._cache[self.id] = Product._cache[self.name] = self
 
     def __unicode__(self):
         """ Product name for printing. """
@@ -1412,9 +1416,6 @@ class Product(Nitrate):
             if 'version' in inject:
                 self._version = Version(product=self, \
                         version=inject["version"])
-
-        if get_cache_level() >= CACHE_OBJECTS:
-            Product._cache[self.id] = Product._cache[self.name] = self
 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1770,7 +1771,7 @@ class User(Nitrate):
         elif email is not None:
             self._email = email
 
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -1780,7 +1781,7 @@ class User(Nitrate):
     @staticmethod
     def search(**query):
         """ Search for users. """
-        return [User(hash=hash)
+        return [User(hash)
                 for hash in Nitrate()._server.User.filter(dict(query))]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1836,7 +1837,8 @@ class User(Nitrate):
             else:
                 log.info("Fetching the current user")
                 inject = self._server.User.get_me()
-                User._cache["i-am-current-user"] = self
+                if get_cache_level() >= CACHE_OBJECTS:
+                    User._cache["i-am-current-user"] = self
 
         # Save values
         log.debug("Initializing user UID#{0}".format(inject["id"]))
@@ -2036,7 +2038,7 @@ class Version(Nitrate):
                     "and version name to initialize the Version object.")
         Nitrate.__init__(self, id)
 
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -2579,9 +2581,6 @@ class CaseComponents(Container):
 class Bug(Nitrate):
     """ Bug related to a test case or a case run. """
 
-    # Local cache of Bug
-    _cache = {}
-
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Bug Properties
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2605,8 +2604,7 @@ class Bug(Nitrate):
     #  Bug Special
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def __init__(self, bug=None, system=1, testcase=None, caserun=None,
-            hash=None):
+    def __init__(self, bug=None, system=1, testcase=None, caserun=None):
         """
         Initialize the bug.
 
@@ -2634,6 +2632,7 @@ class Bug(Nitrate):
                 self._testcase = TestCase(hash["case_id"])
             if hash["case_run_id"] is not None:
                 self._caserun = CaseRun(hash["case_run_id"])
+
             Nitrate.__init__(self, hash["id"], prefix="BUG")
 
     def __eq__(self, other):
@@ -2789,7 +2788,7 @@ class Bugs(Mutable):
         log.debug(pretty(hash))
 
         # Save as a Bug object list
-        self._current = [Bug(hash=bug) for bug in hash]
+        self._current = [Bug(bug) for bug in hash]
 
     def _update(self):
         """ Save bug changes to the server. """
@@ -2849,7 +2848,7 @@ class Tag(Nitrate):
                     "to initialize the Tag object.")
         Nitrate.__init__(self, id)
 
-        if get_cache_level() >= CACHE_OBJECTS:
+        if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
     def __unicode__(self):
@@ -2902,7 +2901,8 @@ class Tag(Nitrate):
             self._id = hash["id"]
             self._name = hash["name"]
 
-        Tag._cache[self.id] = Tag._cache[self.name] = self
+        if get_cache_level() >= CACHE_OBJECTS:
+            Tag._cache[self.id] = Tag._cache[self.name] = self
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3357,7 +3357,8 @@ class TestPlan(Mutable):
         self._testcases = TestCases(self)
         self._children = ChildPlans(self)
 
-        TestPlan._cache[self._id] = self
+        if get_cache_level() >= CACHE_OBJECTS:
+            TestPlan._cache[self._id] = self
 
     def _update(self):
         """ Save test plan data to the server. """
@@ -3477,8 +3478,6 @@ class TestPlan(Mutable):
 class TestPlans(Container):
     """ Test plans linked to a test case. """
 
-    _cache = {}
-
     def _get(self):
         """ Fetch currently linked test plans from the server. """
         log.info("Fetching {0}'s plans".format(self._identifier))
@@ -3557,21 +3556,14 @@ class TestRun(Mutable):
                 # Fetch test cases only if not all cached
                 log.info("Fetching {0}'s test cases".format(self.identifier))
                 testcases = self._server.TestRun.get_test_cases(self.id)
+                testcases = [TestCase(id) for id in testcases]
             else:
                 testcases = [TestCase(id) for id in testcaseids]
-            # Create the CaseRun objects
-            if len(testcaseids) > 0 and isinstance(testcases[0], dict):
-                # Create from dictionary
-                self._caseruns = [
-                        CaseRun(caserun, testcaseinject=testcase)
-                        for caserun in caseruns for testcase in testcases
-                        if int(testcase["case_id"]) == int(caserun["case_id"])]
-            elif len(testcaseids) > 0 and isinstance(testcases[0], TestCase):
-                # Create from objects (using caching)
-                self._caseruns = [
-                        CaseRun(caserun, testcaseinject=testcase)
-                        for caserun in caseruns for testcase in testcases
-                        if int(testcase.id) == int(caserun["case_id"])]
+            # Create from objects (using caching)
+            self._caseruns = [
+                    CaseRun(caserun, testcaseinject=testcase)
+                    for caserun in caseruns for testcase in testcases
+                    if int(testcase.id) == int(caserun["case_id"])]
         return self._caseruns
 
     @property
@@ -3771,7 +3763,8 @@ class TestRun(Mutable):
         # Initialize containers
         self._tags = RunTags(self)
 
-        TestRun._cache[self._id] = self
+        if get_cache_level() >= CACHE_OBJECTS:
+            TestRun._cache[self._id] = self
 
 
     def _update(self):
@@ -4594,7 +4587,7 @@ class CaseRun(Mutable):
     def search(**query):
         """ Search for case runs. """
         return [CaseRun(inject) for inject in
-            Nitrate()._server.TestCaseRun.filter(dict(query))]
+                Nitrate()._server.TestCaseRun.filter(dict(query))]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Case Run Methods
@@ -4641,7 +4634,7 @@ class CaseRun(Mutable):
             log.error(pretty(hash))
             log.error(pretty(caserunhash))
             raise NitrateError("Failed to create case run")
-        self._get(caserunhash=caserunhash)
+        self._get(caseruninject=caserunhash)
         log.info(u"Successfully created {0}".format(self))
 
 
@@ -4680,7 +4673,8 @@ class CaseRun(Mutable):
         # Initialize containers
         self._bugs = Bugs(self)
 
-        CaseRun._cache[self._id] = self
+        if get_cache_level() >= CACHE_OBJECTS:
+            CaseRun._cache[self._id] = self
 
     def _update(self):
         """ Save test case run data to the server. """
