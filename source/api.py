@@ -497,18 +497,15 @@ class Nitrate(object):
 
     @classmethod
     def _is_cached(cls, id):
-        """ Check if object (list of objects) is cached """
+        """ Check whether object for given id or list of ids is cached """
 
         # ID check
-        if isinstance(id, int) and id in cls._cache:
-            return True
+        if isinstance(id, int):
+            return id in cls._cache
 
         # Check list of IDs
         if isinstance(id, list):
-            for temp in id:
-                if isinstance(temp, int) and temp not in cls._cache:
-                    return False
-            return True
+            return all(_is_cached for i in id)
 
         return False
 
@@ -538,14 +535,16 @@ class Nitrate(object):
         # Search the cache for ID
         try:
             temp = cls._cache_lookup(id, **kwargs)
-            log.debug("Using cached object {0} {1}".format(cls.__name__, id))
+            log.debug("Using cached object {0} {1}".format(cls.__name__, temp.id))
             return temp
         except KeyError:
             # Object not cached yet, create a new one and cache it
-            log.debug("Caching {0} {1}".format(cls.__name__, id))
             new = super(Nitrate, cls).__new__(cls)
             if isinstance(id, int):
+                log.debug("Caching {0} {1}".format(cls.__name__, id))
                 cls._cache[id] = new
+            else:
+                log.debug("Caching {0} object".format(cls.__name__))
             return new
 
     def __init__(self, id=None, prefix="ID"):
@@ -1729,6 +1728,25 @@ class User(Nitrate):
     email = property(_getter("email"), doc="User email address.")
     name = property(_getter("name"), doc="User first name and last name.")
 
+    @classmethod
+    def _cache_lookup(cls, id, **kwargs):
+        """ Check if object with id is already in cache """
+        # Return current user
+        if id is None and 'login' not in kwargs and 'email' not in kwargs:
+            return cls._cache["i-am-current-user"]
+
+        # ID check
+        if isinstance(id, int) or isinstance(id, basestring):
+            return cls._cache[id]
+
+        if 'login' in kwargs:
+            return cls._cache[kwargs.get("login")]
+
+        if 'email' in kwargs:
+            return cls._cache[kwargs.get("email")]
+
+        raise KeyError
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Special
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1826,6 +1844,7 @@ class User(Nitrate):
             else:
                 log.info("Fetching the current user")
                 inject = self._server.User.get_me()
+                User._cache["i-am-current-user"] = self
 
         # Save values
         log.debug("Initializing user UID#{0}".format(inject["id"]))
@@ -1839,7 +1858,8 @@ class User(Nitrate):
             self._name = None
 
         if get_cache_level() >= CACHE_OBJECTS:
-            User._cache[self.id] = User._cache[self.login] = User._cache[self.email] = self
+            User._cache[self.id] = User._cache[self.login] \
+                                   = User._cache[self.email] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Self Test
