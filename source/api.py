@@ -684,7 +684,7 @@ class Build(Nitrate):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Name and product check
@@ -759,7 +759,7 @@ class Build(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.product = NitrateNone
+        self._name = self._product = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing build data. """
@@ -862,7 +862,7 @@ class Category(Nitrate):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Name and product check
@@ -936,7 +936,7 @@ class Category(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.product = self.description = NitrateNone
+        self._name = self._product = self._description = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing category data. """
@@ -1103,7 +1103,7 @@ class PlanType(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = NitrateNone
+        self._name = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing test plan type data """
@@ -1382,7 +1382,7 @@ class Product(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.version = NitrateNone
+        self._name = self._version = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch product data from the server. """
@@ -1779,7 +1779,7 @@ class User(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.login = self.email = NitrateNone
+        self._name = self._login = self._email = NitrateNone
 
     @staticmethod
     def _parse(id, login, email):
@@ -1975,7 +1975,7 @@ class Version(Nitrate):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Name and product check
@@ -2050,7 +2050,7 @@ class Version(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.product = NitrateNone
+        self._name = self._product = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch version data from the server. """
@@ -2316,7 +2316,7 @@ class Component(Nitrate):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Name and product check
@@ -2388,7 +2388,7 @@ class Component(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = self.product = NitrateNone
+        self._name = self._product = NitrateNone
 
     def _get(self, inject=None):
         """ Get the missing component data. """
@@ -2875,7 +2875,7 @@ class Tag(Nitrate):
 
     def _init(self):
         """ Set all object attributes to NitrateNone """
-        self.name = NitrateNone
+        self._name = NitrateNone
 
     def _get(self, inject=None):
         """ Fetch tag data from the server. """
