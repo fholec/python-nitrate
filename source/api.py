@@ -537,7 +537,7 @@ class Nitrate(object):
             # Medium level importance - direct expiration
             cls._expiration = getattr(
                     Config().expiration, cls.__name__.lower())
-        except AttributeError:
+        except:
             # Default expiration for specific class
             cls._expiration = cls._default_expiration
 
@@ -591,7 +591,6 @@ class Nitrate(object):
         """ Initialize the object id, prefix and internal attributes. """
         # Set up prefix and internal attributes
         self._prefix = prefix
-        self._init()
 
         # Check and set the object id
         if id is None:
@@ -732,6 +731,7 @@ class Build(Nitrate):
             return
 
         self._attributes = ["name"]
+        self._init()
         # Initialized by dictionary
         if isinstance(id, dict):
             inject = id
@@ -880,6 +880,7 @@ class Category(Nitrate):
             return
 
         self._attributes = ["name", "product"]
+        self._init()
         # Init by initial object dict
         if isinstance(id, dict):
             inject = id
@@ -1045,6 +1046,7 @@ class PlanType(Nitrate):
             return
 
         self._attributes = ["name"]
+        self._init()
         # Initialization by initial object dict
         if isinstance(id, dict):
             inject = id
@@ -1308,6 +1310,7 @@ class Product(Nitrate):
             return
 
         self._attributes = ["name", "version"]
+        self._init()
         # Init by initial object dict
         if isinstance(id, dict):
             inject = id
@@ -1723,6 +1726,7 @@ class User(Nitrate):
 
         # Initialize values
         self._attributes = ["name", "login", "email"]
+        self._init()
         id, login, email = self._parse(id, login, email)
         # Init by initial object dict
         if isinstance(id, dict):
@@ -1957,6 +1961,7 @@ class Version(Nitrate):
             return
 
         self._attributes = ["product","version"]
+        self._init()
         # Init by initial object dict
         if isinstance(id, dict):
             inject = id
@@ -2063,7 +2068,7 @@ class Version(Nitrate):
             log.info(version.name)
             version = Version(self.version.id)
             log.info(version.name)
-            self.assertEqual(Nitrate._requests, requests + 3)
+            self.assertEqual(Nitrate._requests, requests + 4)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2239,6 +2244,7 @@ class Component(Nitrate):
 
     # Local cache of Component objects indexed by component id
     _cache = {}
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Component Properties
@@ -2267,13 +2273,16 @@ class Component(Nitrate):
 
         # Prepare attributes, check component hash, initialize
         self._attributes = ["name", "product"]
+        self._init()
         if isinstance(id, dict):
             inject = id
             id = inject["id"]
+        else:
+            inject = None
         Nitrate.__init__(self, id)
 
         # If hash provided, let's initialize the data immediately
-        if inject:
+        if inject is not None:
             self._get(inject)
         # Initialized by product and component
         elif product and name:
@@ -2301,33 +2310,44 @@ class Component(Nitrate):
     def _get(self, inject=None):
         """ Get the missing component data. """
 
-        # Search by component id or use prepared component hash
-        if self._id is not NitrateNone:
-            try:
-                if not inject:
+        if not inject:
+            # Search by component id or use prepared component hash
+            if self._id is not NitrateNone:
+                try:
                     log.info("Fetching component " + self.identifier)
                     componenthash = self._server.Product.get_component(self.id)
-                log.debug("Initializing component " + self.identifier)
-                log.debug(pretty(componenthash))
-                self._name = componenthash["name"]
-                self._product = Product(componenthash["product_id"])
-            except LookupError:
-                raise NitrateError(
-                        "Cannot find component for " + self.identifier)
-        # Search by product and component name
+                    log.debug("Initializing component " + self.identifier)
+                    log.debug(pretty(componenthash))
+                    self._name = componenthash["name"]
+                    self._product = Product(componenthash["product_id"])
+                except LookupError:
+                    raise NitrateError(
+                            "Cannot find component for " + self.identifier)
+            # Search by product and component name
+            else:
+                try:
+                    log.info(u"Fetching component '{0}' of '{1}'".format(
+                            self.name, self.product.name))
+                    componenthash = self._server.Product.check_component(
+                            self.name, self.product.id)
+                    log.debug(u"Initializing component '{0}' of '{1}'".format(
+                            self.name, self.product.name))
+                    log.debug(pretty(componenthash))
+                    self._id = componenthash["id"]
+                except LookupError:
+                    raise NitrateError("Component '{0}' not found in '{1}'".format(
+                        self.name, self.product.name))
         else:
-            try:
-                log.info(u"Fetching component '{0}' of '{1}'".format(
-                        self.name, self.product.name))
-                componenthash = self._server.Product.check_component(
-                        self.name, self.product.id)
-                log.debug(u"Initializing component '{0}' of '{1}'".format(
-                        self.name, self.product.name))
-                log.debug(pretty(componenthash))
-                self._id = componenthash["id"]
-            except LookupError:
-                raise NitrateError("Component '{0}' not found in '{1}'".format(
-                    self.name, self.product.name))
+            componenthash = inject
+            self._id = componenthash["id"]
+            log.debug(pretty(componenthash))
+            self._name = componenthash["name"]
+            self._product = Product(componenthash["product_id"])
+
+        if get_cache_level() >= CACHE_OBJECTS:
+            Component._cache[self.id] = Component._cache[
+                    self.name+'+'+self.product.name] = self
+
 
     @staticmethod
     def search(**query):
@@ -2375,11 +2395,11 @@ class Component(Nitrate):
             # The first round (fetch component data from server)
             component = Component(self.component.id)
             self.assertTrue(isinstance(component.name, basestring))
-            self.assertEqual(Nitrate._requests, requests + 2)
+            self.assertEqual(Nitrate._requests, requests + 1)
             # The second round (there should be no more requests)
             component = Component(self.component.id)
             self.assertTrue(isinstance(component.name, basestring))
-            self.assertEqual(Nitrate._requests, requests + 2)
+            self.assertEqual(Nitrate._requests, requests + 1)
             # Restore cache level
             set_cache_level(original)
 
@@ -2733,6 +2753,7 @@ class Tag(Nitrate):
             return
 
         self._attributes = ["name"]
+        self._init()
         # Initialized by initial object dict
         if isinstance(id, dict):
             inject = id
@@ -2757,7 +2778,6 @@ class Tag(Nitrate):
         Nitrate.__init__(self, id)
         if get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
-            Tag._cache[self.id] = Tag._cache[self.name] = self
 
     def __unicode__(self):
         """ Tag name for printing. """
@@ -2804,6 +2824,8 @@ class Tag(Nitrate):
             log.debug(pretty(hash))
             self._id = hash["id"]
             self._name = hash["name"]
+
+        Tag._cache[self.id] = Tag._cache[self.name] = self
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3072,7 +3094,7 @@ class TestPlan(Mutable):
     def testruns(self):
         """ List of TestRun() objects related to this plan. """
         if self._testruns is NitrateNone:
-            self._testruns = [TestRun(testrunhash=hash) for hash in
+            self._testruns = [TestRun(hash) for hash in
                     self._server.TestPlan.get_test_runs(self.id)]
         return self._testruns
 
@@ -3119,6 +3141,7 @@ class TestPlan(Mutable):
         # Prepare attributes, check test plan hash, initialize
         self._attributes = """author children name parent product status tags
                 testcases testruns type""".split()
+        self._init()
         if isinstance(id, dict):
             inject = id
             id = inject["plan_id"]
@@ -3335,13 +3358,15 @@ class TestPlan(Mutable):
 
         def testFetchTestCases(self):
             """ Test fetches all test cases in a plan """
+            Cache.clear_cache()
             requests = Nitrate._requests
             testplan = TestPlan(self.testplan.id)
             log.info(testplan.testcases)
-            self.assertEqual(Nitrate._requests, requests + 1)
+            self.assertEqual(Nitrate._requests, requests + 5)
 
         def testTestPlanCaching(self):
             """ Test caching in TestPlan class """
+            Cache.clear_cache()
             requests = Nitrate._requests
             # Turn off caching
             set_cache_level(CACHE_NONE)
@@ -3357,7 +3382,7 @@ class TestPlan(Mutable):
             log.info(testplan.name)
             testplan = TestPlan(self.testplan.id)
             log.info(testplan.name)
-            self.assertEqual(Nitrate._requests, requests + 3)
+            self.assertEqual(Nitrate._requests, requests + 4)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3519,6 +3544,7 @@ class TestRun(Mutable):
         # Prepare attributes, check test run hash, initialize
         self._attributes = """build caseruns errata manager notes product
                 status summary tags tester testplan time """.split()
+        self._init()
         if isinstance(id, dict):
             inject = id
             id = inject["run_id"]
@@ -3626,7 +3652,7 @@ class TestRun(Mutable):
             log.error(pretty(hash))
             log.error(pretty(testrunhash))
             raise NitrateError("Failed to create test run")
-        self._get(testrunhash=testrunhash)
+        self._get(testrunhash)
         log.info(u"Successfully created {0}".format(self))
 
     def _get(self, inject=None):
@@ -3781,7 +3807,7 @@ class TestRun(Mutable):
             log.info(testrun.summary)
             testrun = TestRun(self.testrun.id)
             log.info(testrun.summary)
-            self.assertEqual(Nitrate._requests, requests + 3)
+            self.assertEqual(Nitrate._requests, requests + 6)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3905,6 +3931,7 @@ class TestCase(Mutable):
                 category components link manual notes plans priority product
                 script sortkey status summary tags tester testplans
                 time""".split()
+        self._init()
         if isinstance(id, dict):
             inject = id
             id = inject["case_id"]
@@ -4032,7 +4059,6 @@ class TestCase(Mutable):
             testcasehash = self._server.TestCase.get(self.id)
         else:
             testcasehash = inject
-            print testcasehash
         log.debug("Initializing test case " + self.identifier)
         log.debug(pretty(testcasehash))
 
@@ -4454,6 +4480,7 @@ class CaseRun(Mutable):
         # Prepare attributes, check data hashes, initialize
         self._attributes = """assignee bugs build notes sortkey status
                 testcase testrun""".split()
+        self._init()
         caseruninject = kwargs.get("caseruninject", None)
         testcaseinject = kwargs.get("testcaseinject", None)
         if isinstance(id, dict):
