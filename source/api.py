@@ -3057,7 +3057,7 @@ class CaseTags(Container):
         log.info("Fetching tags for {0}".format(self._identifier))
         hash = self._server.TestCase.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag({'id':tag["id"], 'name':["name"]}) \
+        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
                 for tag in hash])
         self._original = set(self._current)
 
