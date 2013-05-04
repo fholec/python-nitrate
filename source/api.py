@@ -505,7 +505,7 @@ class Nitrate(object):
 
         # Check list of IDs
         if isinstance(id, list):
-            return all(_is_cached for i in id)
+            return all(_is_cached(i) for i in id)
 
         return False
 
@@ -799,8 +799,8 @@ class Build(Nitrate):
             self._product = inject["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
-            Build._cache[self.id] = Build._cache[
-                    self.name+')('+self.product.name] = self
+            for key in [self.id, self.name+')('+self.product.name]:
+                Build._cache[key] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Build Self Test
@@ -976,8 +976,8 @@ class Category(Nitrate):
             self._product = inject["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
-            Category._cache[self.id] = Category._cache[
-                    self.name+')('+self.product.name] = self
+            for key in [self.id, self.name+')('+self.product.name]:
+                Category._cache[key] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Category Self Test
@@ -1051,6 +1051,25 @@ class PlanType(Nitrate):
     # Read-only properties
     id = property(_getter("id"), doc="Test plan type id")
     name = property(_getter("name"), doc="Test plan type name")
+
+    @classmethod
+    def _cache_lookup(cls, id, **kwargs):
+        """ Check if object with id is already in cache """
+        # ID check
+        if isinstance(id, int) or isinstance(id, basestring):
+            return cls._cache[id]
+
+        if 'name' in kwargs:
+            return cls._cache[kwargs.get("name")]
+
+        if isinstance(id, dict):
+            if 'id' in id:
+                return cls._cache[id['id']]
+            elif 'name' in id:
+                name = kwargs.get("name")
+                return cls._cache[id[name]]
+
+        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  PlanType Special
@@ -1312,6 +1331,25 @@ class Product(Nitrate):
     # Read-write properties
     version = property(_getter("version"), _setter("version"),
             doc="Default product version")
+
+    @classmethod
+    def _cache_lookup(cls, id, **kwargs):
+        """ Check if object with id is already in cache """
+        # ID check
+        if isinstance(id, int) or isinstance(id, basestring):
+            return cls._cache[id]
+
+        if 'name' in kwargs:
+            return cls._cache[kwargs.get("name")]
+
+        if isinstance(id, dict):
+            if 'id' in id:
+                return cls._cache[id['id']]
+            elif 'name' in id:
+                name = kwargs.get("name")
+                return cls._cache[id[name]]
+
+        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Product Special
@@ -1745,6 +1783,10 @@ class User(Nitrate):
         if 'email' in kwargs:
             return cls._cache[kwargs.get("email")]
 
+        if isinstance(id, dict):
+            if 'id' in id:
+                return cls._cache[id['id']]
+
         raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1858,8 +1900,8 @@ class User(Nitrate):
             self._name = None
 
         if get_cache_level() >= CACHE_OBJECTS:
-            User._cache[self.id] = User._cache[self.login] \
-                                   = User._cache[self.email] = self
+            for key in [self.id, self.email, self.login]:
+                User._cache[key] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Self Test
@@ -2112,8 +2154,8 @@ class Version(Nitrate):
             self._product = hash["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
-            Version._cache[self.id] = Version._cache[
-                    self.name+')('+self.product.name] = self
+            for key in [self.id, self.name+')('+self.product.name]:
+                Version._cache[key] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Version Self Test
@@ -2448,9 +2490,8 @@ class Component(Nitrate):
             self._product = Product(componenthash["product_id"])
 
         if get_cache_level() >= CACHE_OBJECTS:
-            Component._cache[self.id] = Component._cache[
-                    self.name+')('+self.product.name] = self
-
+            for key in [self.id, self.name+')('+self.product.name]:
+                Component._cache[key] = self
 
     @staticmethod
     def search(**query):
@@ -2882,6 +2923,7 @@ class Tag(Nitrate):
             raise NitrateError("Need either tag id or tag name "
                     "to initialize the Tag object.")
         Nitrate.__init__(self, id)
+
         if get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
@@ -2906,7 +2948,7 @@ class Tag(Nitrate):
                 try:
                     log.info("Fetching tag " + self.identifier)
                     hash = self._server.Tag.get_tags({'ids': [self.id]})
-                    log.debug("Initializing tags " + self.identifier)
+                    log.debug("Initializing tag " + self.identifier)
                     log.debug(pretty(hash))
                     self._name = hash[0]["name"]
                 except IndexError:
@@ -3212,7 +3254,6 @@ class TestPlan(Mutable):
         return "{0} - {1} ({2} cases, {3} runs)".format(self.identifier,
                 self.name, len(self.testcases), len(self.testruns))
 
-    # Class method that checks if object with id is already in cache
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
@@ -3608,7 +3649,6 @@ class TestRun(Mutable):
         return "{0} - {1} ({2} cases)".format(
                 self.identifier, self.summary, len(self.caseruns))
 
-    # Class method that checks if object with id is already in cache
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
@@ -4002,7 +4042,6 @@ class TestCase(Mutable):
     time = property(_getter("time"), _setter("time"),
             doc="Estimated time.")
 
-    # Class method that checks if object with id is already in cache
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
@@ -4565,7 +4604,6 @@ class CaseRun(Mutable):
     status = property(_getter("status"), _setter("status"),
             doc = "Test case run status object.")
 
-    # Class method that checks if object with id is already in cache
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
@@ -4800,7 +4838,7 @@ class CaseRun(Mutable):
             _print_time(time.time() - start_time)
 
 CLASSES = [Build, Category, PlanType, Product, User, Version,
-        CaseRun, TestCase, TestPlan, TestRun, Component]
+        CaseRun, TestCase, TestPlan, TestRun, Component, Tag]
 
 
 
