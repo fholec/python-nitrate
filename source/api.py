@@ -693,7 +693,6 @@ class Build(Nitrate):
             return cls._cache[name+')('+product]
 
         return super(Build, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Build Special
@@ -858,7 +857,6 @@ class Category(Nitrate):
             return cls._cache[name+')('+product]
 
         return super(Category, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Category Special
@@ -940,7 +938,7 @@ class Category(Nitrate):
                     log.debug(pretty(hash))
                     self._id = hash["id"]
                 except xmlrpclib.Fault:
-                    raise NitrateError("Category '{0}' not found in"\
+                    raise NitrateError("Category '{0}' not found in"
                            " '{1}'".format(self.name, self.product.name))
         else:
             # Save values
@@ -1034,7 +1032,6 @@ class PlanType(Nitrate):
             return cls._cache[kwargs.get("name")]
 
         return super(PlanType, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  PlanType Special
@@ -1101,7 +1098,7 @@ class PlanType(Nitrate):
                     log.debug(pretty(hash))
                     self._name = hash["name"]
                 except xmlrpclib.Fault:
-                    raise NitrateError("Cannot find test plan type for " \
+                    raise NitrateError("Cannot find test plan type for "
                                     + self.identifier)
             # Search by name
             else:
@@ -1301,11 +1298,16 @@ class Product(Nitrate):
     @classmethod
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
+        try:
+            if 'version' in kwargs and cls._cache[id].version is NitrateNone:
+                raise KeyError
+        except AttributeError:
+            pass
+
         if 'name' in kwargs:
             return cls._cache[kwargs.get("name")]
 
         return super(Product, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Product Special
@@ -1350,12 +1352,11 @@ class Product(Nitrate):
         if inject is not None or get_cache_level() >= CACHE_OBJECTS:
             self._get(inject)
 
-        if self._version is NitrateNone:
-            # Optionally initialize version
-            if version is not None:
-                self._version = Version(product=self, version=version)
-            else:
-                self._version = NitrateNone
+        # Optionally initialize version
+        if version is not None:
+            self._version = Version(product=self, version=version)
+        else:
+            self._version = NitrateNone
 
         if get_cache_level() >= CACHE_OBJECTS:
             Product._cache[self.id] = Product._cache[self.name] = self
@@ -1413,9 +1414,6 @@ class Product(Nitrate):
             log.debug(pretty(inject))
             self._id = inject["id"]
             self._name = inject["name"]
-            if 'version' in inject:
-                self._version = Version(product=self, \
-                        version=inject["version"])
 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1738,7 +1736,6 @@ class User(Nitrate):
             return cls._cache[kwargs.get("email")]
 
         return super(User, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Special
@@ -1998,7 +1995,6 @@ class Version(Nitrate):
             return cls._cache[name+')('+product]
 
         return super(Version, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Version Special
@@ -2327,7 +2323,6 @@ class Component(Nitrate):
             return cls._cache[name+')('+product]
 
         return super(Component, cls)._cache_lookup(id, **kwargs)
-        raise KeyError
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Component Special
@@ -2407,7 +2402,7 @@ class Component(Nitrate):
                     log.debug(pretty(componenthash))
                     self._id = componenthash["id"]
                 except LookupError:
-                    raise NitrateError("Component '{0}' not found in"\
+                    raise NitrateError("Component '{0}' not found in"
                            " '{1}'".format(self.name, self.product.name))
         else:
             componenthash = inject
@@ -2604,7 +2599,8 @@ class Bug(Nitrate):
     #  Bug Special
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def __init__(self, bug=None, system=1, testcase=None, caserun=None):
+    def __init__(self, bug=None, system=1, testcase=None, caserun=None,
+            hash=None):
         """
         Initialize the bug.
 
@@ -2788,7 +2784,7 @@ class Bugs(Mutable):
         log.debug(pretty(hash))
 
         # Save as a Bug object list
-        self._current = [Bug(bug) for bug in hash]
+        self._current = [Bug(hash=bug) for bug in hash]
 
     def _update(self):
         """ Save bug changes to the server. """
@@ -2915,10 +2911,9 @@ class PlanTags(Container):
     def _get(self):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
-        hash = self._server.TestPlan.get_tags(self.id)
+        injects = self._server.TestPlan.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
-                for tag in hash])
+        self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -2985,10 +2980,9 @@ class RunTags(Container):
     def _get(self):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
-        hash = self._server.TestRun.get_tags(self.id)
+        injects = self._server.TestRun.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
-               for tag in hash])
+        self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -3055,10 +3049,9 @@ class CaseTags(Container):
     def _get(self):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
-        hash = self._server.TestCase.get_tags(self.id)
+        injects = self._server.TestCase.get_tags(self.id)
         log.debug(pretty(hash))
-        self._current = set([Tag({'id':tag["id"], 'name':tag["name"]}) \
-                for tag in hash])
+        self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
     def _add(self, tags):
@@ -3556,9 +3549,9 @@ class TestRun(Mutable):
                 # Fetch test cases only if not all cached
                 log.info("Fetching {0}'s test cases".format(self.identifier))
                 testcases = self._server.TestRun.get_test_cases(self.id)
-                testcases = [TestCase(id) for id in testcases]
+                testcases = [TestCase(inject) for inject in testcases]
             else:
-                testcases = [TestCase(id) for id in testcaseids]
+                testcases = [TestCase(inject) for inject in testcaseids]
             # Create from objects (using caching)
             self._caseruns = [
                     CaseRun(caserun, testcaseinject=testcase)
