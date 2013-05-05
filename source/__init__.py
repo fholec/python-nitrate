@@ -82,6 +82,65 @@ immediately to server. Instead, they are queued and after
 multicall_end() is called, all queries are sent to server in a batch.
 
 
+Caching support
+~~~~~~~~~~~~~~~
+
+In order to save calls to server and time, caching support has been
+implemented. Every class that handles objects has its own cache and it is used
+to save already initialized (fetched) objects from server. Several classes are
+automatically fetched from server after initialization (immutable objects), the
+rest will be fetched from server upon request.
+
+Currently, there are 3 types (levels) of caching:
+
+    CACHE_NONE - no caching at all
+    CACHE_CHANGES - caching only local updates of instance attributes
+    CACHE_OBJECTS - caching objects for further use (default setting)
+    CACHE_PERSISTENT - persistent caching (caching in a file) option enabled
+
+Methods that manipulate caching levels:
+
+    get_cache_mode
+    set_cache_mode
+
+Persistent cache (local proxy) was another idea how to speed up performance of
+the module. It allows class caches to be stored in a file, load caches from a
+file, and clear caches. This performance improvement is very helpful mainly for
+immutable classes (for example User), where all user can be imported in the
+beggining of a script and a lot of connections can be saved.
+
+This performance improvement can be activated only by specifying file name in
+config section ([cache]).
+
+Cache expiration is a way how to prevent using probably obsoleted object (for
+example caserun). Every class has its own default expiration time, but, of
+course, it can be modified from config file (see example in [expiration])
+and user input. Time unit in cache expiration is 1 hour.
+
+User can specify the expiration time for class using:
+
+    class.set_expiration(time)
+
+There are two special values:
+
+     0: EXPIRE_ALWAYS -> no caching of certain class
+    -1: EXPIRE_NEVER -> object never expires
+
+Default values for specific classes:
+
+    Build ...... 12 months
+    Category ... 12 months
+    PlanType ... 12 months
+    Product .... 12 months
+    User ....... 24 months
+    Version .... 12 months
+
+    TestPlan ... 2 days
+    TestRun .... 12 hours
+    TestCase ... 12 hours
+    CaseRun .... 1 hour
+
+
 Search support
 ~~~~~~~~~~~~~~
 
@@ -139,6 +198,14 @@ data of existing objects to be tested, for example:
     product = Red Hat Enterprise Linux 6
     category = Sanity
 
+    [expiration]
+    user = -1
+    caserun = 1
+    tag = 24000
+
+    [cache]
+    file = /tmp/data.pkl
+
 To exercise the whole test suite just run "python nitrate.py". To test
 only subset of tests pick the desired classes on the command line:
 
@@ -169,11 +236,11 @@ __all__ = """
         TestPlan PlanType PlanStatus
         TestRun RunStatus
         TestCase CaseStatus
-        CaseRun Status
+        CaseRun Status Cache
 
         ascii color listed pretty
         log info setLogLevel
-        setCacheLevel CACHE_NONE CACHE_CHANGES CACHE_OBJECTS CACHE_ALL
+        setCacheLevel CACHE_NONE CACHE_CHANGES CACHE_OBJECTS CACHE_PERSISTENT
         setColorMode COLOR_ON COLOR_OFF COLOR_AUTO
         set_log_level set_cache_level set_color_mode
         get_log_level get_cache_level get_color_mode
