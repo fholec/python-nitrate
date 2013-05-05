@@ -2608,10 +2608,6 @@ class Bug(Nitrate):
         and related testcase and/or caserun object or provide complete hash.
         """
 
-        # If we are a cached-already object no init is necessary
-        if getattr(self, "_id", None) is not None:
-            return
-
         # Initialize id & values
         if bug is not None:
             self._bug = bug
@@ -3182,7 +3178,7 @@ class TestPlan(Mutable):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Check dictionary (only ID so far)
@@ -3569,7 +3565,7 @@ class TestRun(Mutable):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Check dictionary (only ID so far)
@@ -3963,7 +3959,7 @@ class TestCase(Mutable):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Check dictionary (only ID so far)
@@ -4525,7 +4521,7 @@ class CaseRun(Mutable):
     def _cache_lookup(cls, id, **kwargs):
         """ Check if object with id is already in cache """
         # ID check
-        if isinstance(id, int) or isinstance(id, basestring):
+        if isinstance(id, int):
             return cls._cache[id]
 
         # Check dictionary (only ID so far)
