@@ -515,7 +515,8 @@ class Nitrate(object):
 
     def _is_expired(self):
         """ Check if cached object has expired """
-        if (datetime.datetime.now() - self._time_cached) > self._expiration:
+        if self._time_cached is None or (datetime.datetime.now()
+                - self._time_cached) > self._expiration:
             return True
 
         return False
@@ -4819,14 +4820,14 @@ class Cache(Nitrate):
     def load():
         """ Load caches from specified file """
         if get_cache_level() < CACHE_PERSISTENT:
-            log.debug("Cache not saved (caching level PERSISTENT not set)")
+            log.debug("Cache not loaded (caching level PERSISTENT not set)")
             return
 
         try:
             # Open file to cache classes
             input_file = open(Nitrate()._config.cache.file, 'rb')
         except AttributeError:
-            log.debug("Cache not saved (file path not provided)")
+            log.debug("Cache not loaded (file path not provided)")
             return
 
         # Load caches from file
@@ -4872,6 +4873,7 @@ class Cache(Nitrate):
         for current_class in Cache._classes:
             print current_class.__name__, ":", len(current_class._cache)
 
+Cache.load()
 atexit.register(Cache.save)
 
 
