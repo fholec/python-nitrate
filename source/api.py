@@ -25,6 +25,8 @@ import re
 import sys
 import time
 import types
+import pickle
+import atexit
 import random
 import optparse
 import unittest
@@ -98,7 +100,7 @@ set_log_level()
 CACHE_NONE = 0
 CACHE_CHANGES = 1
 CACHE_OBJECTS = 2
-CACHE_ALL = 3
+CACHE_PERSISTENT = 3
 
 _cache_level = CACHE_OBJECTS
 
@@ -112,7 +114,7 @@ def set_cache_level(level=None):
         CACHE_NONE ...... Write object changes immediately to the server
         CACHE_CHANGES ... Changes pushed only by update() or upon destruction
         CACHE_OBJECTS ... Any loaded object is saved for possible future use
-        CACHE_ALL ....... Where possible, pre-fetch all available objects
+        CACHE_PERSISTENT  Experimental feature - persistent caching (in a file)
 
     By default CACHE_OBJECTS is used. That means any changes to objects
     are pushed to the server only upon destruction or when explicitly
@@ -444,6 +446,8 @@ class Nitrate(object):
     _connection = None
     _settings = None
     _requests = 0
+    _time_cached = None
+    _expiration = None
     _multicall_proxy = None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -487,11 +491,14 @@ class Nitrate(object):
         """ Check if object with id is already in cache """
         # ID check
         if isinstance(id, int) or isinstance(id, basestring):
-            return cls._cache[id]
+            if (time.time() - cls._cache[id]._time_cached) < cls._expiration:
+                return cls._cache[id]
 
         # Check dictionary (only ID so far)
         if isinstance(id, dict):
-            return cls._cache[id['id']]
+            if ((time.time() - cls._cache[id['id']]._time_cached)
+                    < cls._expiration):
+                return cls._cache[id['id']]
 
         raise KeyError
 
@@ -508,6 +515,30 @@ class Nitrate(object):
             return all(cls._is_cached(i) for i in id)
 
         return False
+
+    @classmethod
+    def _get_expiration(cls):
+        """ Method determines expiration time """
+        # User defined expiration - top level importance
+        if cls._expiration is not None:
+            return cls._expiration
+
+        try:
+            # Medium level importance - direct expiration
+            cls._expiration = getattr(
+                    Config().expiration, cls.__name__.lower())
+        except:
+            # Default expiration for specific class
+            cls._expiration = cls._default_expiration
+
+        return cls._expiration * 3600
+
+    @classmethod
+    def set_expiration(cls, expiration):
+        """  Static method for setting expiration time to specified value """
+        if expiration == -1:
+             expiration = sys.maxint
+        cls._expiration = expiration
 
     @property
     def _multicall(self):
@@ -529,11 +560,12 @@ class Nitrate(object):
     def __new__(cls, id=None, **kwargs):
         """ Create a new object, handle caching if enabled. """
 
-        if _cache_level < CACHE_OBJECTS or cls not in CLASSES:
+        if _cache_level < CACHE_OBJECTS or cls not in Cache._classes:
             return super(Nitrate, cls).__new__(cls)
 
         # Search the cache for ID
         try:
+            cls._expiration = cls._get_expiration()
             temp = cls._cache_lookup(id, **kwargs)
             log.debug("Using cached object {0} {1}".format(
                     cls.__name__, temp.id))
@@ -564,6 +596,8 @@ class Nitrate(object):
             except ValueError:
                 raise NitrateError("Invalid {0} id: '{1}'".format(
                         self.__class__.__name__, id))
+
+        self._time_cached = time.time()
 
     def __str__(self):
         """ Provide ascii string representation. """
@@ -670,6 +704,9 @@ class Build(Nitrate):
 
     # Local cache of Build
     _cache = {}
+    # Set default expiration of Build to 12 months
+    _default_expiration = 8640
+
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Build Properties
@@ -828,6 +865,8 @@ class Category(Nitrate):
 
     # Local cache of Category objects indexed by category id
     _cache = {}
+    # Set default expiration of Category to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Category Properties
@@ -1016,6 +1055,8 @@ class PlanType(Nitrate):
 
     # Local cache of PlanType objects indexed by plan type id
     _cache = {}
+    # Set default expiration of PlanType to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  PlanType Properties
@@ -1282,6 +1323,8 @@ class Product(Nitrate):
 
     # Local cache of Product
     _cache = {}
+    # Set default expiration of Product to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Product Properties
@@ -1711,6 +1754,8 @@ class User(Nitrate):
 
     # Local cache of User objects indexed by user id
     _cache = {}
+    # Set default expiration of User to 24 months
+    _default_expiration = 17280
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Properties
@@ -1972,6 +2017,8 @@ class Version(Nitrate):
 
     # Local cache of Version
     _cache = {}
+    # Set default expiration of Version to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Version Properties
@@ -2295,6 +2342,8 @@ class Component(Nitrate):
 
     # Local cache of Component objects indexed by component id
     _cache = {}
+    # Set default expiration of Component to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Component Properties
@@ -2804,6 +2853,8 @@ class Tag(Nitrate):
 
     # Local cache for Tag
     _cache = {}
+    # Set default expiration of Tag to 12 months
+    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Tag Special
@@ -3131,6 +3182,8 @@ class TestPlan(Mutable):
 
     # Local cache of TestPlan
     _cache = {}
+    # Set default expiration of TestPlan to 2 days
+    _default_expiration = 48
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Plan Properties
@@ -3502,6 +3555,8 @@ class TestRun(Mutable):
 
     # Local cache of TestRun
     _cache = {}
+    # Set default expiration of TestRun to 12 hours
+    _default_expiration = 12
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Run Properties
@@ -3894,6 +3949,8 @@ class TestCase(Mutable):
 
     # Local cache of TestCase
     _cache = {}
+    # Set default expiration of TestCase to 12 hours
+    _default_expiration = 12
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Case Properties
@@ -4490,6 +4547,8 @@ class CaseRun(Mutable):
 
     # Local cache of CaseRun
     _cache = {}
+    # Set default expiration of CaseRun to 1 hour
+    _default_expiration = 1
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Case Run Properties
@@ -4751,9 +4810,80 @@ class CaseRun(Mutable):
                                 caserun, caserun.testcase, caserun.status))
             _print_time(time.time() - start_time)
 
-CLASSES = [Build, Category, PlanType, Product, User, Version,
-        CaseRun, TestCase, TestPlan, TestRun, Component, Tag]
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#  Cache Class
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Cache(Nitrate):
+    """ Cache class
+
+        Class responsible for caching multiple objects and creating/loading
+        local persistent cache.
+    """
+
+    _classes = [Build, Category, PlanType, Product, User, Version,
+            CaseRun, TestCase, TestPlan, TestRun, Component, Tag]
+
+    def determine_file_path():
+        """ Determine file path """
+        try:
+            return Config().expiration.file
+        except:
+            return None
+
+    _file = determine_file_path()
+
+    @staticmethod
+    def save():
+        """ Save caches to specified file """
+        if Cache._file is not None and get_cache_level() >= CACHE_PERSISTENT:
+            # Open file to cache classes
+            output_file = open(Cache._file, 'wb')
+            output = {}
+            for current_class in Cache._classes:
+                output[current_class.__name__] = current_class._cache
+            # Dump caches to file
+            pickle.dump(output, output_file)
+            output_file.close()
+        else:
+            log.debug("Cannot save cache (file path not provided"
+                    " or caching level CACHE_PERSISTENT is not set)")
+
+    @staticmethod
+    def load():
+        """ Load caches from specified file """
+        if Cache._file is not None and get_cache_level() >= CACHE_PERSISTENT:
+            # Open file to load caches
+            input_file = open(Cache._file, 'rb')
+            # Load caches from file
+            data = pickle.load(input_file)
+            for current_class in Cache._classes:
+                current_class._cache = data[current_class.__name__]
+            input_file.close()
+        else:
+            log.debug("Cannot load cache (file path not provided"
+                    " or caching level CACHE_PERSISTENT is not set)")
+
+    @staticmethod
+    def clear():
+        """ Clear caches in all classes """
+        for current_class in Cache._classes:
+            current_class._cache = {}
+
+    @staticmethod
+    def expire():
+        """ Delete and unlink every expired entry in cache """
+        for current_class in Cache._classes:
+            for current_object in current_class._cache:
+                # Check if object is expired
+                if ((time.time() -
+                        current_class._cache[current_object]._time_cached) >
+                        current_class._get_expiration() or
+                        isinstance(current_object._time_cached, NitrateNone)):
+                    # Set all attributes to NitrateNone
+                    Nitrate._init(current_class._cache[current_object])
+
+atexit.register(Cache.save)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
