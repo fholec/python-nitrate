@@ -447,8 +447,8 @@ class Nitrate(object):
     _settings = None
     _requests = 0
     _time_cached = None
-    _expiration = 31536000
     _multicall_proxy = None
+    _expiration = datetime.timedelta(days=30)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Nitrate Properties
@@ -513,9 +513,9 @@ class Nitrate(object):
 
         return False
 
-    @classmethod
-    def _is_expired(cls, id):
-        if (time.time() - cls._cache[id]._time_cached) > cls._expiration:
+    def _is_expired(self):
+        """ Check if cached object has expired """
+        if (datetime.datetime.now() - self._time_cached) > self._expiration:
             return True
 
         return False
@@ -575,8 +575,6 @@ class Nitrate(object):
             except ValueError:
                 raise NitrateError("Invalid {0} id: '{1}'".format(
                         self.__class__.__name__, id))
-
-        self._time_cached = time.time()
 
     def __str__(self):
         """ Provide ascii string representation. """
@@ -800,6 +798,7 @@ class Build(Nitrate):
             self._product = inject["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             for key in [self.id, self.name+')('+self.product.name]:
                 Build._cache[key] = self
 
@@ -963,6 +962,7 @@ class Category(Nitrate):
             self._product = inject["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             for key in [self.id, self.name+')('+self.product.name]:
                 Category._cache[key] = self
 
@@ -1135,6 +1135,7 @@ class PlanType(Nitrate):
             self._name = inject["name"]
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             PlanType._cache[self.id] = PlanType._cache[self.name] = self
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1373,6 +1374,7 @@ class Product(Nitrate):
             self._version = NitrateNone
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             Product._cache[self.id] = Product._cache[self.name] = self
 
     def __unicode__(self):
@@ -1725,8 +1727,6 @@ class User(Nitrate):
 
     # Local cache of User objects indexed by user id
     _cache = {}
-    # Set default expiration of User to 24 months
-    _expiration = 63072000
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  User Properties
@@ -1865,7 +1865,7 @@ class User(Nitrate):
             self._name = None
 
         if get_cache_level() >= CACHE_OBJECTS:
-            self._time_cached = time.time()
+            self._time_cached = datetime.datetime.now()
             for key in [self.id, self.email, self.login]:
                 User._cache[key] = self
 
@@ -1989,8 +1989,6 @@ class Version(Nitrate):
 
     # Local cache of Version
     _cache = {}
-    # Set default expiration of Version to 12 months
-    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Version Properties
@@ -2109,6 +2107,7 @@ class Version(Nitrate):
             self._product = hash["product"]
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             for key in [self.id, self.name+')('+self.product.name]:
                 Version._cache[key] = self
 
@@ -2153,6 +2152,9 @@ class Mutable(Nitrate):
     happened) to the Nitrate server and the _update() method performing
     the actual update (to be implemented by respective class).
     """
+
+    # Set expiration to 1 hour
+    _expiration = datetime.timedelta(hours=1)
 
     def __init__(self, id=None, prefix="ID"):
         """ Initially set up to unmodified state. """
@@ -2314,8 +2316,6 @@ class Component(Nitrate):
 
     # Local cache of Component objects indexed by component id
     _cache = {}
-    # Set default expiration of Component to 12 months
-    _default_expiration = 8640
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Component Properties
@@ -2433,6 +2433,7 @@ class Component(Nitrate):
             self._product = Product(componenthash["product_id"])
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             for key in [self.id, self.name+')('+self.product.name]:
                 Component._cache[key] = self
 
@@ -2915,6 +2916,7 @@ class Tag(Nitrate):
             self._name = hash["name"]
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             Tag._cache[self.id] = Tag._cache[self.name] = self
 
 
@@ -3152,8 +3154,6 @@ class TestPlan(Mutable):
 
     # Local cache of TestPlan
     _cache = {}
-    # Set expiration of TestPlan to 2 days
-    _expiration = 172800
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Plan Properties
@@ -3370,6 +3370,7 @@ class TestPlan(Mutable):
         self._children = ChildPlans(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             TestPlan._cache[self._id] = self
 
     def _update(self):
@@ -3525,8 +3526,6 @@ class TestRun(Mutable):
 
     # Local cache of TestRun
     _cache = {}
-    # Set expiration of TestRun to 12 hours
-    _expiration = 43200
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Run Properties
@@ -3778,6 +3777,7 @@ class TestRun(Mutable):
         self._tags = RunTags(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             TestRun._cache[self._id] = self
 
 
@@ -3919,8 +3919,6 @@ class TestCase(Mutable):
 
     # Local cache of TestCase
     _cache = {}
-    # Set expiration of TestCase to 12 hours
-    _expiration = 43200
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Test Case Properties
@@ -4195,6 +4193,7 @@ class TestCase(Mutable):
         self._components = CaseComponents(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             TestCase._cache[self.id] = self
 
     def _update(self):
@@ -4517,8 +4516,6 @@ class CaseRun(Mutable):
 
     # Local cache of CaseRun
     _cache = {}
-    # Set expiration of CaseRun to 1 hour
-    _expiration = 3600
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Case Run Properties
@@ -4692,6 +4689,7 @@ class CaseRun(Mutable):
         self._bugs = Bugs(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
             CaseRun._cache[self._id] = self
 
     def _update(self):
@@ -4794,79 +4792,85 @@ class Cache(Nitrate):
     _classes = [Build, Category, PlanType, Product, User, Version,
             CaseRun, TestCase, TestPlan, TestRun, Component, Tag]
 
-    def determine_file_path():
-        """ Determine file path """
-        try:
-            return Config().cache.file
-        except:
-            return None
-
-    _file = determine_file_path()
-
     @staticmethod
     def save():
         """ Save caches to specified file """
-        if Cache._file is not None and get_cache_level() >= CACHE_PERSISTENT:
+
+        if get_cache_level() < CACHE_PERSISTENT:
+            log.debug("Cache not saved (caching level PERSISTENT not set)")
+            return
+
+        try:
             # Open file to cache classes
-            output_file = open(Cache._file, 'wb')
-            output = {}
-            Cache.expire()
-            for current_class in Cache._classes:
-                output[current_class.__name__] = current_class._cache
-            # Dump caches to file
-            pickle.dump(output, output_file)
-            output_file.close()
-        else:
-            log.debug("Cache not saved (file path not provided"
-                    " or caching level is not set)")
+            output_file = open(Nitrate()._config.cache.file, 'wb')
+        except AttributeError:
+            log.debug("Cache not saved (file path not provided)")
+            return
+
+        output = {}
+        Cache.expire()
+        for current_class in Cache._classes:
+            output[current_class.__name__] = current_class._cache
+        # Dump caches to file
+        pickle.dump(output, output_file)
+        output_file.close()
 
     @staticmethod
     def load():
         """ Load caches from specified file """
-        if Cache._file is not None and get_cache_level() >= CACHE_PERSISTENT:
-            # Open file to load caches
-            input_file = open(Cache._file, 'rb')
-            # Load caches from file
-            data = pickle.load(input_file)
-            for current_class in Cache._classes:
-                current_class._cache = data[current_class.__name__]
-                try:
-                    current_class._expiration = getattr(Config().expiration,
-                           current_class.__name__.lower())
-                except AttributeError:
-                    pass
+        if get_cache_level() < CACHE_PERSISTENT:
+            log.debug("Cache not saved (caching level PERSISTENT not set)")
+            return
 
-                for object in current_class._cache:
-                    current_class._cache[object]._expiration = (
-                            current_class._expiration)
-            Cache.expire()
-            input_file.close()
-        else:
-            log.debug("Cache not loaded (file path not provided"
-                    " or caching level is not set)")
+        try:
+            # Open file to cache classes
+            input_file = open(Nitrate()._config.cache.file, 'rb')
+        except AttributeError:
+            log.debug("Cache not saved (file path not provided)")
+            return
+
+        # Load caches from file
+        data = pickle.load(input_file)
+        for current_class in Cache._classes:
+            current_class._cache = data[current_class.__name__]
+            try:
+                current_class._expiration = datetime.timedelta(seconds=getattr(
+                        Nitrate()._config.expiration,
+                        current_class.__name__.lower()))
+            except AttributeError:
+                pass
+
+        Cache.expire()
+        input_file.close()
 
     @staticmethod
     def clear():
         """ Clear caches in all classes """
         for current_class in Cache._classes:
-            for current_object in current_class:
-                current_class._init(current_class._cache[current_object])
+            for current_object in current_class._cache.itervalues():
+                current_object._init()
+
+            current_class._cache = {}
 
     @staticmethod
     def expire():
         """ Delete and unlink every expired entry in cache """
         for current_class in Cache._classes:
-            for current_object in current_class._cache:
+            expired = []
+            for id, current_object in current_class._cache.iteritems():
                 # Check if object is expired
-                if current_class._is_expired(current_object):
+                if current_object._is_expired():
                     # Set all attributes to NitrateNone
-                    current_class._init(current_class._cache[current_object])
+                    current_object._init()
+                    expired.append(id)
+            for id in expired:
+                del current_class._cache[id]
 
     @staticmethod
     def stats():
         """ Show classes with their caches """
-        for cls in Cache._classes:
-            print cls.__name__, ":", cls._cache
+        for current_class in Cache._classes:
+            print current_class.__name__, ":", len(current_class._cache)
 
 atexit.register(Cache.save)
 

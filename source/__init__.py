@@ -115,11 +115,7 @@ config section ([cache]).
 Cache expiration is a way how to prevent using probably obsoleted object (for
 example caserun). Every class has its own default expiration time, but, of
 course, it can be modified from config file (see example in [expiration])
-and user input. Time unit in cache expiration is 1 hour.
-
-User can specify the expiration time for class using:
-
-    class.set_expiration(time)
+and user input. Time unit in cache expiration is 1 second.
 
 There are two special values:
 
@@ -128,17 +124,19 @@ There are two special values:
 
 Default values for specific classes:
 
-    Build ...... 12 months
-    Category ... 12 months
-    PlanType ... 12 months
-    Product .... 12 months
-    User ....... 24 months
-    Version .... 12 months
+    Immutable ... 30 days
+        Build
+        Category
+        PlanType
+        Product
+        User
+        Version
 
-    TestPlan ... 2 days
-    TestRun .... 12 hours
-    TestCase ... 12 hours
-    CaseRun .... 1 hour
+    Mutable .... 1 hour
+        TestPlan
+        TestRun
+        TestCase
+        CaseRun
 
 
 Search support
