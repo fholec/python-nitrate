@@ -100,8 +100,8 @@ Currently, there are 3 types (levels) of caching:
 
 Methods that manipulate caching levels:
 
-    get_cache_mode
-    set_cache_mode
+    get_cache_level()
+    set_cache_level()
 
 Persistent cache (local proxy) was another idea how to speed up performance of
 the module. It allows class caches to be stored in a file, load caches from a
