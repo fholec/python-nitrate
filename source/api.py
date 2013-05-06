@@ -3365,8 +3365,9 @@ class TestPlan(Mutable):
         # Set up attributes
         self._author = User(hash["author_id"])
         self._name = hash["name"]
-        self._product = Product(id=hash["product_id"],
-                version=hash["default_product_version"])
+        self._product = Product({'id':hash["product_id"],
+                'name':hash["product"],
+                'version':hash["default_product_version"]})
         self._type = PlanType(hash["type_id"])
         self._status = PlanStatus(hash["is_active"] in ["True", True])
         if hash["parent_id"] is not None:
