@@ -23,6 +23,7 @@
 import os
 import re
 import sys
+import gzip
 import time
 import types
 import pickle
@@ -518,11 +519,8 @@ class Nitrate(object):
 
     def _is_expired(self):
         """ Check if cached object has expired """
-        if self._time_cached is None or (datetime.datetime.now()
-                - self._time_cached) > self._expiration:
-            return True
-
-        return False
+        return self._time_cached is None or  self._time_cached is None or (
+                datetime.datetime.now() - self._time_cached) > self._expiration
 
     @property
     def _multicall(self):
@@ -4786,6 +4784,10 @@ class CaseRun(Mutable):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #  Cache Class
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+NEVER_CACHE = datetime.timedelta(seconds=0)
+NEVER_EXPIRE = datetime.timedelta(days=365000)
+
 class Cache(Nitrate):
     """ Cache class
 
@@ -4793,8 +4795,9 @@ class Cache(Nitrate):
         local persistent cache.
     """
 
-    _classes = [Build, Category, PlanType, Product, User, Version,
-            CaseRun, TestCase, TestPlan, TestRun, Component, Tag]
+    _classes = [Build, CaseRun, Category, Component, PlanType, Product,
+            Tag, TestCase, TestPlan, TestRun, User, Version]
+
 
     @staticmethod
     def save():
@@ -4806,7 +4809,7 @@ class Cache(Nitrate):
 
         try:
             # Open file to cache classes
-            output_file = open(Nitrate()._config.cache.file, 'wb')
+            output_file = gzip.open(Nitrate()._config.cache.file, 'wb')
         except AttributeError:
             log.debug("Cache not saved (file path not provided)")
             return
@@ -4828,7 +4831,7 @@ class Cache(Nitrate):
 
         try:
             # Open file to cache classes
-            input_file = open(Nitrate()._config.cache.file, 'rb')
+            input_file = gzip.open(Nitrate()._config.cache.file, 'rb')
         except AttributeError:
             log.debug("Cache not loaded (file path not provided)")
             return
@@ -4841,9 +4844,19 @@ class Cache(Nitrate):
         for current_class in Cache._classes:
             current_class._cache = data[current_class.__name__]
             try:
-                current_class._expiration = datetime.timedelta(seconds=getattr(
-                        Nitrate()._config.expiration,
-                        current_class.__name__.lower()))
+                expiration = getattr(Nitrate()._config.expiration,
+                        current_class.__name__.lower())
+                if isinstance(expiration, int):
+                    expiration = datetime.timedelta(seconds=expiration)
+                elif expiration == "NEVER_EXPIRE":
+                    expiration = NEVER_EXPIRE
+                elif expiration == "NEVER_CACHE":
+                    expiration = NEVER_CACHE
+
+                if isinstance(expiration, datetime.timedelta):
+                    current_class._expiration = expiration
+                else:
+                    log.warn("Not valid expiration time in config file")
             except AttributeError:
                 pass
 
@@ -4856,6 +4869,7 @@ class Cache(Nitrate):
         for current_class in Cache._classes:
             for current_object in current_class._cache.itervalues():
                 current_object._init()
+                current_object._time_cached = None
 
             current_class._cache = {}
 
@@ -4869,6 +4883,7 @@ class Cache(Nitrate):
                 if current_object._is_expired():
                     # Set all attributes to NitrateNone
                     current_object._init()
+                    current_object._time_cached = None
                     expired.append(id)
             for id in expired:
                 del current_class._cache[id]
@@ -4880,7 +4895,9 @@ class Cache(Nitrate):
             print current_class.__name__, ":", len(set(
                    current_class._cache.itervalues()))
 
+# Load persistent cache if cache level is set to CACHE_PERSISTENT
 Cache.load()
+# Save persistent cache at exit if cache level is set to CACHE_PERSISTENT
 atexit.register(Cache.save)
 
 
