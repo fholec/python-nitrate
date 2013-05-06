@@ -519,7 +519,7 @@ class Nitrate(object):
 
     def _is_expired(self):
         """ Check if cached object has expired """
-        return self._time_cached is None or  self._time_cached is None or (
+        return self._time_cached is None or (
                 datetime.datetime.now() - self._time_cached) > self._expiration
 
     @property
@@ -2207,17 +2207,25 @@ class Container(Mutable):
             self._get()
         return self._current
 
+    def _init(self):
+        self._current = NitrateNone
+        self._original = NitrateNone
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  Container Special
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def __init__(self, object):
+    def __init__(self, object, inset=None):
         """ Initialize container for specified object. """
         Mutable.__init__(self, object.id)
         self._class = object.__class__
         self._identifier = object.identifier
-        self._current = NitrateNone
-        self._original = NitrateNone
+        if inset is not None:
+            self._current = inset
+            self._original = inset
+            # Check if expired, if yes -> _init()
+        else:
+            self._init()
 
     def __iter__(self):
         """ Container iterator. """
@@ -3369,7 +3377,7 @@ class TestPlan(Mutable):
         # Initialize containers
         self._tags = PlanTags(self)
         self._testcases = TestCases(self)
-        self._children = ChildPlans(self)
+        self._children = ChildPlans(self, inset=self.children)
 
         if get_cache_level() >= CACHE_OBJECTS:
             self._time_cached = datetime.datetime.now()

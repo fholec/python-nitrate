@@ -119,8 +119,8 @@ and user input. Time unit in cache expiration is 1 second.
 
 There are two special values:
 
-     0: EXPIRE_ALWAYS -> no caching of certain class
-    -1: EXPIRE_NEVER -> object never expires
+     0: NEVER_CACHE -> no caching of certain class
+    -1: NEVER_EXPIRE -> object never expires
 
 Default values for specific classes:
 
