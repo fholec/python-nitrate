@@ -2916,7 +2916,6 @@ class Tag(Nitrate):
                 except IndexError:
                     raise NitrateError(
                             "Cannot find tag for '{0}'".format(self.name))
-                    self._id = None
         else:
             hash = inject
             # Save values
@@ -3376,8 +3375,11 @@ class TestPlan(Mutable):
             self._parent = None
 
         # Initialize containers
-        self._tags = PlanTags(self, inset=[Tag(i)
-                for i in hash["tag"]])
+        if get_cache_level() >= CACHE_PERSISTENT:
+            self._tags = PlanTags(self, inset=[Tag(i)
+                    for i in hash["tag"]])
+        else:
+            self._tags = PlanTags(self)
         self._testcases = TestCases(self)
         self._children = ChildPlans(self)
 
@@ -3786,8 +3788,11 @@ class TestRun(Mutable):
         self._errata = testrunhash["errata_id"]
 
         # Initialize containers
-        self._tags = RunTags(self, inset=[Tag(i)
-                for i in testrunhash["tag"]])
+        if get_cache_level() >= CACHE_PERSISTENT:
+            self._tags = RunTags(self, inset=[Tag(i)
+                    for i in testrunhash["tag"]])
+        else:
+            self._tags = RunTags(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
             self._time_cached = datetime.datetime.now()
@@ -4201,8 +4206,11 @@ class TestCase(Mutable):
 
         # Initialize containers
         self._bugs = Bugs(self)
-        self._tags = CaseTags(self, inset=[Tag(i)
-                for i in testcasehash["tag"]])
+        if get_cache_level() >= CACHE_PERSISTENT:
+            self._tags = CaseTags(self, inset=[Tag(i)
+                    for i in testcasehash["tag"]])
+        else:
+            self._tags = CaseTags(self)
         self._testplans = TestPlans(self)
         self._components = CaseComponents(self)
 
