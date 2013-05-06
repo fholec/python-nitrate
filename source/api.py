@@ -2221,9 +2221,9 @@ class Container(Mutable):
         self._class = object.__class__
         self._identifier = object.identifier
         if inset is not None:
-            self._current = inset
-            self._original = inset
-            # Check if expired, if yes -> _init()
+            self._current = set(inset)
+            self._original = set(self._current)
+           # Check if expired, if yes -> _init()
         else:
             self._init()
 
@@ -2941,7 +2941,7 @@ class PlanTags(Container):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
         injects = self._server.TestPlan.get_tags(self.id)
-        log.debug(pretty(hash))
+        log.debug(pretty(injects))
         self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
@@ -3010,7 +3010,7 @@ class RunTags(Container):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
         injects = self._server.TestRun.get_tags(self.id)
-        log.debug(pretty(hash))
+        log.debug(pretty(injects))
         self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
@@ -3079,7 +3079,7 @@ class CaseTags(Container):
         """ Fetch currently attached tags from the server. """
         log.info("Fetching tags for {0}".format(self._identifier))
         injects = self._server.TestCase.get_tags(self.id)
-        log.debug(pretty(hash))
+        log.debug(pretty(injects))
         self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
 
@@ -3375,9 +3375,10 @@ class TestPlan(Mutable):
             self._parent = None
 
         # Initialize containers
-        self._tags = PlanTags(self)
+        self._tags = PlanTags(self, inset=[Tag(i)
+                for i in hash["tag"]])
         self._testcases = TestCases(self)
-        self._children = ChildPlans(self, inset=self.children)
+        self._children = ChildPlans(self)
 
         if get_cache_level() >= CACHE_OBJECTS:
             self._time_cached = datetime.datetime.now()
@@ -3784,7 +3785,8 @@ class TestRun(Mutable):
         self._errata = testrunhash["errata_id"]
 
         # Initialize containers
-        self._tags = RunTags(self)
+        self._tags = RunTags(self, inset=[Tag(i)
+                for i in testrunhash["tag"]])
 
         if get_cache_level() >= CACHE_OBJECTS:
             self._time_cached = datetime.datetime.now()
@@ -4198,7 +4200,8 @@ class TestCase(Mutable):
 
         # Initialize containers
         self._bugs = Bugs(self)
-        self._tags = CaseTags(self)
+        self._tags = CaseTags(self, inset=[Tag(i)
+                for i in testcasehash["tag"]])
         self._testplans = TestPlans(self)
         self._components = CaseComponents(self)
 
