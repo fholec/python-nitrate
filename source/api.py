@@ -94,6 +94,62 @@ set_log_level()
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#  Config Class
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class Config(object):
+    """ User configuration. """
+
+    # Config path
+    path = os.path.expanduser("~/.nitrate")
+
+    # Minimal config example
+    example = ("Please, provide at least a minimal config file {0}:\n"
+                "[nitrate]\n"
+                "url = https://nitrate.server/xmlrpc/".format(path))
+
+    def __init__(self):
+        """ Initialize the configuration """
+
+        # Trivial class for sections
+        class Section(object): pass
+
+        # Try system settings when the config does not exist in user directory
+        if not os.path.exists(self.path):
+            log.debug("User config file not found, trying /etc/nitrate.conf")
+            self.path = "/etc/nitrate.conf"
+        if not os.path.exists(self.path):
+            log.error(self.example)
+            raise NitrateError("No config file found")
+
+        # Parse the config
+        try:
+            parser = ConfigParser.SafeConfigParser()
+            parser.read([self.path])
+            for section in parser.sections():
+                # Create a new section object for each section
+                setattr(self, section, Section())
+                # Set its attributes to section contents (adjust types)
+                for name, value in parser.items(section):
+                    try: value = int(value)
+                    except: pass
+                    if value == "True": value = True
+                    if value == "False": value = False
+                    setattr(getattr(self, section), name, value)
+        except ConfigParser.Error:
+            log.error(self.example)
+            raise NitrateError(
+                    "Cannot read the config file")
+
+        # Make sure the server URL is set
+        try:
+            self.nitrate.url is not None
+        except AttributeError:
+            log.error(self.example)
+            raise NitrateError("No url found in the config file")
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #  Caching
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -128,7 +184,10 @@ def set_cache_level(level=None):
         try:
             _cache_level = int(os.environ["CACHE"])
         except StandardError:
-            _cache_level = CACHE_OBJECTS
+            try:
+                _cache_level = Config().cache.level
+            except AttributeError:
+                _cache_level = CACHE_OBJECTS
     elif level >= 0 and level <= 3:
         _cache_level = level
     else:
@@ -373,62 +432,6 @@ def _print_time(elapsed_time):
 class NitrateNone(object):
     """ Used for distinguishing uninitialized values from regular 'None'. """
     pass
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#  Config Class
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-class Config(object):
-    """ User configuration. """
-
-    # Config path
-    path = os.path.expanduser("~/.nitrate")
-
-    # Minimal config example
-    example = ("Please, provide at least a minimal config file {0}:\n"
-                "[nitrate]\n"
-                "url = https://nitrate.server/xmlrpc/".format(path))
-
-    def __init__(self):
-        """ Initialize the configuration """
-
-        # Trivial class for sections
-        class Section(object): pass
-
-        # Try system settings when the config does not exist in user directory
-        if not os.path.exists(self.path):
-            log.debug("User config file not found, trying /etc/nitrate.conf")
-            self.path = "/etc/nitrate.conf"
-        if not os.path.exists(self.path):
-            log.error(self.example)
-            raise NitrateError("No config file found")
-
-        # Parse the config
-        try:
-            parser = ConfigParser.SafeConfigParser()
-            parser.read([self.path])
-            for section in parser.sections():
-                # Create a new section object for each section
-                setattr(self, section, Section())
-                # Set its attributes to section contents (adjust types)
-                for name, value in parser.items(section):
-                    try: value = int(value)
-                    except: pass
-                    if value == "True": value = True
-                    if value == "False": value = False
-                    setattr(getattr(self, section), name, value)
-        except ConfigParser.Error:
-            log.error(self.example)
-            raise NitrateError(
-                    "Cannot read the config file")
-
-        # Make sure the server URL is set
-        try:
-            self.nitrate.url is not None
-        except AttributeError:
-            log.error(self.example)
-            raise NitrateError("No url found in the config file")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
