@@ -4829,6 +4829,9 @@ class Cache(Nitrate):
         except AttributeError:
             log.debug("Cache not loaded (file path not provided)")
             return
+        except IOError:
+            log.warn("Cache not loaded (file does not exist)")
+            return
 
         # Load caches from file
         data = pickle.load(input_file)
@@ -4871,7 +4874,8 @@ class Cache(Nitrate):
     def stats():
         """ Show classes with their caches """
         for current_class in Cache._classes:
-            print current_class.__name__, ":", len(current_class._cache)
+            print current_class.__name__, ":", len(set(
+                   current_class._cache.itervalues()))
 
 Cache.load()
 atexit.register(Cache.save)
