@@ -2220,12 +2220,10 @@ class Container(Mutable):
         Mutable.__init__(self, object.id)
         self._class = object.__class__
         self._identifier = object.identifier
-        if inset is not None:
-            self._current = set(inset)
-            self._original = set(self._current)
-           # Check if expired, if yes -> _init()
-        else:
+        if inset is None:
             self._init()
+        else:
+            self._get(inset)
 
     def __iter__(self):
         """ Container iterator. """
@@ -2936,13 +2934,24 @@ class Tag(Nitrate):
 class PlanTags(Container):
     """ Test plan tags. """
 
-    def _get(self):
+    # Local cache of PlanTags
+    _cache = {}
+
+    def _get(self, inset=None):
         """ Fetch currently attached tags from the server. """
-        log.info("Fetching tags for {0}".format(self._identifier))
-        injects = self._server.TestPlan.get_tags(self.id)
+        if inset is None:
+            log.info("Fetching tags for {0}".format(self._identifier))
+            injects = self._server.TestPlan.get_tags(self.id)
+            self._current = set([Tag(inject) for inject in injects])
+        else:
+            injects = inset
+            self._current = set([inject for inject in injects])
         log.debug(pretty(injects))
-        self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
+
+        if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
+            PlanTags._cache[self.id] = self
 
     def _add(self, tags):
         """ Attach provided tags to the test plan. """
@@ -3005,13 +3014,25 @@ class PlanTags(Container):
 class RunTags(Container):
     """ Test run tags. """
 
-    def _get(self):
+    # Local cache of RunTags
+    _cache = {}
+
+    def _get(self, inset=None):
         """ Fetch currently attached tags from the server. """
-        log.info("Fetching tags for {0}".format(self._identifier))
-        injects = self._server.TestRun.get_tags(self.id)
+        if inset is None:
+            log.info("Fetching tags for {0}".format(self._identifier))
+            injects = self._server.TestRun.get_tags(self.id)
+            self._current = set([Tag(inject) for inject in injects])
+        else:
+            injects = inset
+            self._current = set([inject for inject in injects])
         log.debug(pretty(injects))
         self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
+
+        if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
+            RunTags._cache[self._id] = self
 
     def _add(self, tags):
         """ Attach provided tags to the test run. """
@@ -3074,13 +3095,24 @@ class RunTags(Container):
 class CaseTags(Container):
     """ Test case tags. """
 
-    def _get(self):
+    # Local cache of CaseTags
+    _cache = {}
+
+    def _get(self, inset=None):
         """ Fetch currently attached tags from the server. """
-        log.info("Fetching tags for {0}".format(self._identifier))
-        injects = self._server.TestCase.get_tags(self.id)
+        if inset is None:
+            log.info("Fetching tags for {0}".format(self._identifier))
+            injects = self._server.TestCase.get_tags(self.id)
+            self._current = set([Tag(inject) for inject in injects])
+        else:
+            injects = inset
+            self._current = set([inject for inject in injects])
         log.debug(pretty(injects))
-        self._current = set([Tag(inject) for inject in injects])
         self._original = set(self._current)
+
+        if get_cache_level() >= CACHE_OBJECTS:
+            self._time_cached = datetime.datetime.now()
+            CaseTags._cache[self.id] = self
 
     def _add(self, tags):
         """ Attach provided tags to the test case. """
@@ -4815,8 +4847,9 @@ class Cache(Nitrate):
         local persistent cache.
     """
 
-    _classes = [Build, CaseRun, Category, Component, PlanType, Product,
-            Tag, TestCase, TestPlan, TestRun, User, Version]
+    _classes = [Build, CaseRun, CaseTags, Category, Component, PlanTags,
+            PlanType, Product, RunTags, Tag, TestCase, TestPlan, TestRun,
+            User, Version]
 
 
     @staticmethod
